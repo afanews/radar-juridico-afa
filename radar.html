@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Radar Jurídico Empresarial AFA</title>
+  <meta name="description" content="Protótipo interno de radar de notícias jurídicas empresariais para o AFA Advogados." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f4f5f2;
+      --panel:#ffffff;
+      --ink:#222322;
+      --muted:#72736f;
+      --soft:#e9e9e4;
+      --line:#dadbd4;
+      --afa:#f6c400;
+      --afa-2:#d8a900;
+      --dark:#383937;
+      --dark-2:#242523;
+      --danger:#c94b47;
+      --ok:#14785f;
+      --info:#4d6585;
+      --shadow: 0 18px 55px rgba(26,26,24,.10);
+      --radius:24px;
+      --radius-sm:15px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      background:
+        radial-gradient(circle at 8% -8%, rgba(246,196,0,.18), transparent 30%),
+        radial-gradient(circle at 100% 0%, rgba(56,57,55,.16), transparent 34%),
+        var(--bg);
+      color:var(--ink);
+    }
+    a{color:inherit;text-decoration:none}
+    button,input,select,textarea{font:inherit}
+    .app{display:grid;grid-template-columns:292px 1fr;min-height:100vh}
+    .sidebar{
+      position:sticky;top:0;height:100vh;background:linear-gradient(180deg,var(--dark-2),var(--dark));
+      color:#fff;padding:28px 22px;overflow:auto;border-right:1px solid rgba(255,255,255,.08)
+    }
+    .brand{display:flex;align-items:center;gap:12px;margin-bottom:30px}
+    .logo{width:54px;height:54px;border-radius:18px;background:#fff;color:var(--dark-2);display:grid;place-items:center;font-weight:800;font-size:24px;position:relative;letter-spacing:-1px}
+    .logo:after{content:"";position:absolute;right:8px;top:8px;width:12px;height:12px;border-top:5px solid var(--afa);border-right:5px solid var(--afa);border-radius:2px}
+    .brand h1{font-size:17px;line-height:1.15;margin:0;letter-spacing:-.02em}
+    .brand small{display:block;color:#c9cbc4;font-size:11px;margin-top:3px}
+    .nav-label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#acafa6;margin:24px 12px 10px}
+    .nav{display:grid;gap:7px}
+    .nav button{
+      appearance:none;border:0;background:transparent;color:#d7d8d1;text-align:left;padding:12px 12px;border-radius:14px;cursor:pointer;display:flex;gap:10px;align-items:center;transition:.18s ease
+    }
+    .nav button:hover,.nav button.active{background:rgba(255,255,255,.09);color:#fff}
+    .nav button.active{box-shadow:inset 3px 0 0 var(--afa)}
+    .dot{width:8px;height:8px;border-radius:99px;background:var(--afa);display:inline-block;box-shadow:0 0 0 5px rgba(246,196,0,.12)}
+    .side-card{margin-top:28px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:22px;padding:18px}
+    .side-card h3{margin:0 0 8px;font-size:15px}
+    .side-card p{margin:0;color:#d1d2cb;font-size:12px;line-height:1.55}
+    .side-card .schedule{margin-top:14px;display:grid;gap:8px;color:#fff;font-weight:700;font-size:13px}
+    .schedule span{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:rgba(0,0,0,.18);border-radius:12px}
+    main{padding:28px 34px 50px;min-width:0}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:24px}
+    .headline h2{font-size:32px;line-height:1.05;margin:0;letter-spacing:-.04em}
+    .headline p{margin:8px 0 0;color:var(--muted);font-size:14px;max-width:780px;line-height:1.55}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .btn{border:0;border-radius:14px;padding:11px 15px;font-weight:700;cursor:pointer;background:var(--dark);color:#fff;box-shadow:0 10px 28px rgba(36,37,35,.12);transition:.15s ease;white-space:nowrap}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.yellow{background:var(--afa);color:#191a18}
+    .btn.ghost{background:#fff;color:var(--dark);border:1px solid var(--line);box-shadow:none}
+    .grid{display:grid;gap:18px}
+    .stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}
+    .stat{background:var(--panel);border:1px solid rgba(0,0,0,.04);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-height:132px}
+    .stat:after{content:"";position:absolute;right:-24px;bottom:-24px;width:90px;height:90px;border-radius:99px;background:rgba(246,196,0,.18)}
+    .stat small{display:block;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    .stat strong{display:block;margin-top:10px;font-size:36px;letter-spacing:-.06em;line-height:1}
+    .stat span{display:block;margin-top:8px;color:var(--muted);font-size:13px;line-height:1.35}
+    .layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.95fr);gap:18px;align-items:start}
+    .card{background:var(--panel);border:1px solid rgba(0,0,0,.045);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .card-head{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;align-items:center}
+    .card-head h3{margin:0;font-size:18px;letter-spacing:-.03em}
+    .card-head p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.4}
+    .card-body{padding:18px 22px}
+    .filters{display:grid;grid-template-columns:1.3fr .8fr .8fr .8fr;gap:10px;margin-bottom:14px}
+    .field{background:#f8f8f5;border:1px solid var(--line);border-radius:13px;padding:11px 12px;color:var(--ink);min-width:0;width:100%}
+    .feed{display:grid;gap:12px}
+    .news{border:1px solid var(--line);border-radius:18px;background:#fff;padding:16px;display:grid;gap:12px;transition:.14s ease;position:relative;overflow:hidden}
+    .news:hover{border-color:#c6c7bf;box-shadow:0 12px 30px rgba(0,0,0,.06)}
+    .news:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--afa)}
+    .news.high:before{background:var(--danger)}
+    .news.medium:before{background:var(--afa)}
+    .news.low:before{background:var(--info)}
+    .news-top{display:flex;justify-content:space-between;gap:12px;align-items:start}
+    .news h4{font-size:16px;line-height:1.25;margin:0;letter-spacing:-.02em;padding-left:2px}
+    .meta{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+    .pill{border-radius:999px;padding:6px 9px;background:#f1f1ed;color:#51524f;font-size:11px;font-weight:800;white-space:nowrap}
+    .pill.high{background:rgba(201,75,71,.11);color:var(--danger)}
+    .pill.medium{background:rgba(246,196,0,.18);color:#705900}
+    .pill.low{background:rgba(77,101,133,.12);color:var(--info)}
+    .news p{margin:0;color:#555751;line-height:1.5;font-size:13px}
+    .impact{display:flex;gap:7px;flex-wrap:wrap}
+    .tag{border-radius:999px;border:1px solid var(--line);padding:6px 8px;color:#595a55;background:#fafaf7;font-size:11px;font-weight:700}
+    .news-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .mini-btn{border:1px solid var(--line);background:#fff;border-radius:11px;padding:8px 10px;font-size:12px;font-weight:800;cursor:pointer;color:var(--dark)}
+    .mini-btn.primary{background:var(--dark);border-color:var(--dark);color:#fff}
+    .ranking{display:grid;gap:11px}
+    .rank-item{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px;border:1px solid var(--line);border-radius:16px;background:#fbfbf8}
+    .rank-num{width:34px;height:34px;border-radius:12px;background:var(--afa);display:grid;place-items:center;font-weight:900;color:#21221f}
+    .rank-item h4{margin:0;font-size:13px;line-height:1.32}.rank-item p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.42}
+    .kanban{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .lane{background:#f6f6f2;border:1px solid var(--line);border-radius:22px;padding:13px;min-height:310px}
+    .lane h4{margin:2px 2px 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#575852;display:flex;justify-content:space-between;align-items:center}
+    .idea{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;margin-bottom:10px;box-shadow:0 8px 18px rgba(0,0,0,.04)}
+    .idea strong{font-size:13px;line-height:1.3;display:block}.idea small{display:block;color:var(--muted);font-size:11px;margin-top:7px;line-height:1.35}.idea .pill{display:inline-block;margin-top:10px}
+    .sources{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .source{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;display:flex;gap:9px;align-items:center;font-weight:700;font-size:13px;color:#444541}
+    .source i{width:10px;height:10px;border-radius:99px;background:var(--afa);display:block}
+    .prompt-box{background:#242523;color:#f8f8f5;border-radius:22px;padding:20px;border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow);overflow:auto}
+    .prompt-box pre{margin:0;white-space:pre-wrap;font-size:12px;line-height:1.55;color:#e7e7df}
+    .section{display:none}.section.active{display:block}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:18px;background:#fff}
+    table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:14px 15px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}th{background:#3a3b38;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:.07em}td{color:#4b4c48}tr:last-child td{border-bottom:0}
+    .calendar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.day{min-height:170px;border:1px solid var(--line);background:#fff;border-radius:18px;padding:14px}.day h4{margin:0 0 10px;font-size:13px}.day p{font-size:12px;color:var(--muted);line-height:1.4;margin:0 0 8px}.channel{font-size:11px;font-weight:900;color:#221;background:rgba(246,196,0,.22);display:inline-block;padding:5px 8px;border-radius:999px}
+    .drawer{position:fixed;right:22px;top:22px;bottom:22px;width:min(560px,calc(100vw - 44px));background:#fff;border:1px solid var(--line);box-shadow:0 30px 90px rgba(0,0,0,.24);border-radius:28px;z-index:50;transform:translateX(calc(100% + 40px));transition:.22s ease;display:flex;flex-direction:column;overflow:hidden}.drawer.open{transform:translateX(0)}.drawer-head{padding:20px 22px;background:var(--dark);color:#fff;display:flex;justify-content:space-between;gap:16px;align-items:start}.drawer-head h3{margin:0;font-size:18px;line-height:1.25}.drawer-close{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:12px;width:38px;height:38px;cursor:pointer;font-size:20px}.drawer-body{padding:22px;overflow:auto}.drawer-body h4{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#73746f;margin:20px 0 8px}.drawer-body p{color:#464744;line-height:1.55;font-size:14px;margin:0}.drawer-body textarea{width:100%;min-height:100px;resize:vertical;margin-top:8px}.status-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+    .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);background:#242523;color:#fff;padding:12px 16px;border-radius:999px;box-shadow:0 16px 44px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.18s ease;font-size:13px;font-weight:700;z-index:90}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:1180px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.nav{grid-template-columns:repeat(3,minmax(0,1fr))}.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.kanban{grid-template-columns:repeat(2,1fr)}.sources{grid-template-columns:repeat(2,1fr)}.calendar{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:720px){main{padding:20px 16px}.topbar{align-items:flex-start;flex-direction:column}.headline h2{font-size:27px}.filters{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.kanban,.sources,.calendar{grid-template-columns:1fr}.nav{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">afa</div>
+        <div>
+          <h1>Radar Jurídico<br>Empresarial</h1>
+          <small>Banco conectado • AFA Advogados</small>
+        </div>
+      </div>
+      <div class="nav-label">Painel</div>
+      <nav class="nav" aria-label="Menu principal">
+        <button class="active" data-view="dashboard"><span class="dot"></span>Dashboard</button>
+        <button data-view="noticias"><span class="dot"></span>Radar de Notícias</button>
+        <button data-view="pautas"><span class="dot"></span>Pautas Sugeridas</button>
+        <button data-view="validacao"><span class="dot"></span>Validação Jurídica</button>
+        <button data-view="calendario"><span class="dot"></span>Calendário Editorial</button>
+        <button data-view="fontes"><span class="dot"></span>Fontes Monitoradas</button>
+        <button data-view="prompt"><span class="dot"></span>Prompt da IA</button>
+      </nav>
+      <div class="side-card">
+        <h3>Rotina sugerida</h3>
+        <p>O radar está preparado para rodar uma vez por dia às 10h20 e também receber atualização manual.</p>
+        <div class="schedule"><span>Automático <b>10h20</b></span><span>Manual <b>botão</b></span></div>
+      </div>
+      <div class="side-card">
+        <h3>Regra editorial</h3>
+        <p>Notícia só vira conteúdo quando há impacto em operação, caixa, margem, contratos, dados, RH, crédito, governança ou decisão.</p>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div class="headline">
+          <h2 id="pageTitle">Dashboard do radar</h2>
+          <p id="pageSubtitle">Transforme notícias jurídicas recentes em pautas empresariais com prioridade, canal recomendado e validação técnica.</p>
+        </div>
+        <div class="actions">
+          <button class="btn ghost" id="exportBtn">Exportar briefing</button>
+          <button class="btn yellow" id="newScanBtn">Atualizar dados</button>
+        </div>
+      </div>
+
+      <section class="section active" id="dashboard">
+        <div class="grid stats">
+          <article class="stat"><small>Notícias triadas</small><strong id="statNews">18</strong><span>últimas 48 horas</span></article>
+          <article class="stat"><small>Prioridade alta</small><strong id="statHigh">6</strong><span>exigem validação rápida</span></article>
+          <article class="stat"><small>Pautas sugeridas</small><strong id="statIdeas">11</strong><span>com canal recomendado</span></article>
+          <article class="stat"><small>Validação pendente</small><strong id="statPending">7</strong><span>advogado responsável</span></article>
+        </div>
+        <div class="layout">
+          <div class="card">
+            <div class="card-head"><div><h3>Radar recente</h3><p>Dados carregados do Supabase. Nesta etapa, ainda usamos notícias de teste até ligar o robô de busca.</p></div><button class="mini-btn" data-viewlink="noticias">Ver tudo</button></div>
+            <div class="card-body"><div class="feed" id="dashboardFeed"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Top 5 pautas do dia</h3><p>Ranking por atualidade, impacto empresarial e aderência ao AFA.</p></div></div>
+            <div class="card-body"><div class="ranking" id="ranking"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="noticias">
+        <div class="card">
+          <div class="card-head"><div><h3>Radar de notícias</h3><p>Filtre por área, prioridade e canal sugerido. A lista abaixo vem do banco Supabase.</p></div></div>
+          <div class="card-body">
+            <div class="filters">
+              <input class="field" id="searchInput" placeholder="Buscar por palavra-chave, fonte, impacto..." />
+              <select class="field" id="areaFilter"><option value="">Todas as áreas</option></select>
+              <select class="field" id="priorityFilter"><option value="">Todas as prioridades</option><option value="Alta">Alta</option><option value="Média">Média</option><option value="Baixa">Baixa</option></select>
+              <select class="field" id="channelFilter"><option value="">Todos os canais</option></select>
+            </div>
+            <div class="feed" id="newsFeed"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="pautas">
+        <div class="card">
+          <div class="card-head"><div><h3>Pautas sugeridas</h3><p>Da notícia recente para o ângulo empresarial: impacto, canal e pergunta para validação técnica.</p></div></div>
+          <div class="card-body">
+            <div class="kanban" id="kanban"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="validacao">
+        <div class="card">
+          <div class="card-head"><div><h3>Validação jurídica</h3><p>Fila para advogado responsável revisar risco técnico antes da publicação.</p></div></div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Pauta</th><th>Área</th><th>Advogado</th><th>Ponto de validação</th><th>Status</th></tr></thead>
+                <tbody id="validationRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="calendario">
+        <div class="card">
+          <div class="card-head"><div><h3>Calendário editorial</h3><p>Modelo semanal para distribuir conteúdos por canal e grau de profundidade.</p></div></div>
+          <div class="card-body"><div class="calendar" id="calendar"></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="fontes">
+        <div class="card">
+          <div class="card-head"><div><h3>Fontes monitoradas</h3><p>Lista inicial recomendada para captar normas, decisões, pautas regulatórias e notícias de mercado.</p></div></div>
+          <div class="card-body"><div class="sources" id="sources"></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="prompt">
+        <div class="card">
+          <div class="card-head"><div><h3>Prompt operacional</h3><p>Base para conectar a ferramenta a uma IA de curadoria e classificação.</p></div><button class="mini-btn primary" id="copyPrompt">Copiar prompt</button></div>
+          <div class="card-body">
+            <div class="prompt-box"><pre id="promptText">Atue como um radar estratégico de notícias jurídicas empresariais para o AFA Advogados.
+
+Busque, filtre e organize notícias, normas, decisões, atos regulatórios e movimentos relevantes publicados nas últimas 24 a 48 horas, com prioridade para conteúdos do dia ou do dia anterior.
+
+Áreas prioritárias: Tributário consultivo, Contencioso tributário, Reforma Tributária, Societário, M&A e governança, Cível empresarial e contratos, Trabalhista empresarial, Legal Ops, LGPD, tecnologia, compliance, recuperação de crédito, regularidade fiscal, CND, PGFN, execuções fiscais e transações tributárias.
+
+Para cada item, entregue: fonte, data, link, área jurídica, resumo simples, impacto empresarial, rotina afetada, grau de prioridade, sugestão de pauta no estilo AFA, melhor canal de publicação, justificativa do canal e pergunta que deve ser validada com o advogado responsável.
+
+Priorize impacto em pequenas e médias empresas: caixa, margem, preço, crédito, CND, passivo, valuation, reputação, eficiência operacional, contratos, ERP, nota fiscal, RH, fornecedor, fluxo de caixa, cobrança, governança, dados e atendimento.
+
+Fontes jornalísticas adicionais a monitorar: Análise (https://analise.com/noticias) e O Globo (https://oglobo.globo.com/).
+
+No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Instagram, stories ou artigo SEO.</pre></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head"><h3 id="drawerTitle">Detalhe da pauta</h3><button class="drawer-close" id="drawerClose" aria-label="Fechar">×</button></div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+  <div class="toast" id="toast">Ação executada</div>
+
+  <script>
+    const SUPABASE_URL = "https://phllqbyawgwuzhdntnil.supabase.co";
+    const SUPABASE_PUBLIC_KEY = "sb_publishable_WmD9FLe7r4RijTgkGx7IkA_JZwX3ijL";
+
+    let news = [];
+    let sources = [];
+
+    const pageCopy = {
+      dashboard:['Dashboard do radar','Dados conectados ao Supabase. Nesta etapa, as notícias de teste confirmam que o banco e o painel estão conversando.'],
+      noticias:['Radar de notícias','Lista carregada do Supabase, com filtros por área, prioridade e canal sugerido.'],
+      pautas:['Pautas sugeridas','Organização editorial para transformar fatos jurídicos em conteúdo empresarial no estilo AFA.'],
+      validacao:['Validação jurídica','Fila interna para revisão técnica dos advogados antes da publicação.'],
+      calendario:['Calendário editorial','Distribuição das pautas por canal, profundidade e oportunidade de publicação.'],
+      fontes:['Fontes monitoradas','Fontes oficiais, regulatórias, judiciais e jornalísticas cadastradas no Supabase.'],
+      prompt:['Prompt da IA','Texto operacional para orientar a curadoria, classificação e sugestão de pautas.']
+    };
+
+    const priorityClass = p => p==='Alta'?'high':p==='Média'?'medium':'low';
+    const statusByPriority = p => p==='Alta'?'Pendente urgente':p==='Média'?'Aguardando triagem':'Monitorar';
+
+    function escapeHtml(value){
+      return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+    }
+
+    function showToast(text){
+      const t=document.getElementById('toast');
+      t.textContent=text;
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'),2200);
+    }
+
+    function supabaseHeaders(){
+      return {
+        apikey: SUPABASE_PUBLIC_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`,
+        'Content-Type': 'application/json'
+      };
+    }
+
+    async function supabaseGet(path){
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: supabaseHeaders() });
+      if(!response.ok){
+        const msg = await response.text();
+        throw new Error(`Erro Supabase ${response.status}: ${msg}`);
+      }
+      return response.json();
+    }
+
+    function formatDate(value){
+      if(!value) return 'Data não informada';
+      const date = new Date(value);
+      if(Number.isNaN(date.getTime())) return 'Data não informada';
+      const diffMs = Date.now() - date.getTime();
+      const diffHours = Math.floor(diffMs / 36e5);
+      if(diffHours < 1) return 'Agora há pouco';
+      if(diffHours < 24) return `Há ${diffHours}h`;
+      const diffDays = Math.floor(diffHours / 24);
+      if(diffDays === 1) return 'Ontem';
+      return date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }
+
+    function splitTags(value){
+      if(Array.isArray(value)) return value.filter(Boolean);
+      return String(value || '')
+        .split(/[,;|]/)
+        .map(x => x.trim())
+        .filter(Boolean)
+        .slice(0,6);
+    }
+
+    function getAnalysis(item){
+      const analysis = item.editorial_analysis;
+      if(Array.isArray(analysis)) return analysis[0] || {};
+      return analysis || {};
+    }
+
+    function mapNewsItem(item){
+      const analysis = getAnalysis(item);
+      const area = item.detected_area || 'A classificar';
+      const impact = splitTags(analysis.affected_routine);
+      return {
+        id: item.id,
+        title: item.title || 'Sem título',
+        url: item.url || '#',
+        source: item.source_name || 'Fonte não informada',
+        date: formatDate(item.published_at || item.collected_at),
+        rawDate: item.published_at || item.collected_at,
+        area,
+        priority: item.priority || 'Média',
+        channel: item.suggested_channel || 'Monitoramento',
+        impact: impact.length ? impact : splitTags(analysis.business_impact || 'Impacto a validar'),
+        summary: item.summary || 'Resumo ainda não cadastrado.',
+        angle: analysis.suggested_agenda || analysis.suggested_angle || item.title || 'Pauta a validar',
+        question: analysis.validation_question || 'Qual ponto técnico precisa ser validado antes da publicação?',
+        lawyer: area,
+        businessImpact: analysis.business_impact || 'Impacto empresarial a validar.',
+        fastPublishRisk: analysis.fast_publish_risk || 'Risco de publicar sem validação técnica do advogado responsável.',
+        lawyerStatus: analysis.lawyer_status || item.status || 'Pendente'
+      };
+    }
+
+    async function loadData(){
+      showToast('Carregando dados do Supabase...');
+      const [newsRows, sourceRows] = await Promise.all([
+        supabaseGet('news_items?select=id,title,url,source_name,published_at,collected_at,summary,detected_area,priority,suggested_channel,status,editorial_analysis(business_impact,affected_routine,suggested_agenda,suggested_angle,validation_question,fast_publish_risk,lawyer_status,lawyer_notes)&order=published_at.desc.nullslast&order=collected_at.desc&limit=100'),
+        supabaseGet('sources?select=name,url,type,priority_area,active&active=eq.true&order=name.asc')
+      ]);
+      news = newsRows.map(mapNewsItem);
+      sources = sourceRows.map(s => ({ name:s.name, url:s.url, type:s.type, area:s.priority_area }));
+      updateAll();
+      showToast(`Dados atualizados: ${news.length} notícia(s) e ${sources.length} fonte(s)`);
+    }
+
+    function renderNewsItem(item){
+      const div=document.createElement('article');
+      div.className='news '+priorityClass(item.priority);
+      const safeUrl = escapeHtml(item.url);
+      div.innerHTML=`
+        <div class="news-top">
+          <div>
+            <div class="meta"><span>${escapeHtml(item.source)}</span><span>${escapeHtml(item.date)}</span><span>${escapeHtml(item.area)}</span></div>
+            <h4>${escapeHtml(item.title)}</h4>
+          </div>
+          <span class="pill ${priorityClass(item.priority)}">${escapeHtml(item.priority)}</span>
+        </div>
+        <p>${escapeHtml(item.summary)}</p>
+        <div class="impact">${item.impact.map(x=>`<span class="tag">${escapeHtml(x)}</span>`).join('')}</div>
+        <div class="news-actions">
+          <button class="mini-btn primary" data-detail="${escapeHtml(item.id)}">Abrir análise</button>
+          <button class="mini-btn" data-save="${escapeHtml(item.id)}">Salvar pauta</button>
+          <a class="mini-btn" href="${safeUrl}" target="_blank" rel="noopener">Abrir fonte</a>
+          <button class="mini-btn">${escapeHtml(item.channel)}</button>
+        </div>`;
+      return div;
+    }
+
+    function renderDashboard(){
+      document.getElementById('statNews').textContent=news.length;
+      document.getElementById('statHigh').textContent=news.filter(n=>n.priority==='Alta').length;
+      document.getElementById('statIdeas').textContent=new Set(news.map(n=>n.angle)).size;
+      document.getElementById('statPending').textContent=news.filter(n=>n.priority!=='Baixa').length;
+      const feed=document.getElementById('dashboardFeed');
+      feed.innerHTML='';
+      if(!news.length){
+        feed.innerHTML='<p style="color:var(--muted);padding:10px">Nenhuma notícia encontrada no banco. Verifique se as notícias de teste foram inseridas.</p>';
+      } else {
+        news.slice(0,5).forEach(n=>feed.appendChild(renderNewsItem(n)));
+      }
+      const ranking=document.getElementById('ranking');
+      ranking.innerHTML='';
+      const ranked = news.filter(n=>n.priority==='Alta').slice(0,5);
+      if(!ranked.length){
+        ranking.innerHTML='<p style="color:var(--muted);padding:10px">Nenhuma pauta de prioridade alta no momento.</p>';
+      }
+      ranked.forEach((n,i)=>{
+        const el=document.createElement('div');
+        el.className='rank-item';
+        el.innerHTML=`<div class="rank-num">${i+1}</div><div><h4>${escapeHtml(n.angle)}</h4><p>${escapeHtml(n.area)} • ${escapeHtml(n.channel)}</p></div>`;
+        ranking.appendChild(el);
+      });
+    }
+
+    function unique(arr){return [...new Set(arr.filter(Boolean))].sort()}
+
+    function resetSelect(id, placeholder){
+      const el = document.getElementById(id);
+      el.innerHTML = `<option value="">${placeholder}</option>`;
+      return el;
+    }
+
+    function setupFilters(){
+      const area=resetSelect('areaFilter','Todas as áreas');
+      unique(news.map(n=>n.area)).forEach(x=>area.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`));
+      const pr=resetSelect('priorityFilter','Todas as prioridades');
+      ['Alta','Média','Baixa'].forEach(x=>pr.insertAdjacentHTML('beforeend',`<option value="${x}">${x}</option>`));
+      const ch=resetSelect('channelFilter','Todos os canais');
+      unique(news.map(n=>n.channel)).forEach(x=>ch.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`));
+    }
+
+    function renderNews(){
+      const q=(document.getElementById('searchInput').value||'').toLowerCase();
+      const area=document.getElementById('areaFilter').value;
+      const pr=document.getElementById('priorityFilter').value;
+      const ch=document.getElementById('channelFilter').value;
+      const feed=document.getElementById('newsFeed');
+      feed.innerHTML='';
+      news.filter(n=>{
+        const blob=[n.title,n.source,n.date,n.area,n.priority,n.channel,n.summary,n.angle,n.question,n.impact.join(' ')].join(' ').toLowerCase();
+        return (!q||blob.includes(q)) && (!area||n.area===area) && (!pr||n.priority===pr) && (!ch||n.channel===ch);
+      }).forEach(n=>feed.appendChild(renderNewsItem(n)));
+      if(!feed.children.length) feed.innerHTML='<p style="color:var(--muted);padding:10px">Nenhum item encontrado com esses filtros.</p>';
+    }
+
+    function renderKanban(){
+      const lanes={
+        'Newsletter': news.filter(n=>n.channel.includes('Newsletter')),
+        'LinkedIn': news.filter(n=>n.channel.includes('LinkedIn')),
+        'Instagram / Stories': news.filter(n=>n.channel.includes('Instagram')||n.channel.includes('Stories')||n.channel.includes('Carrossel')),
+        'Monitorar / Alerta': news.filter(n=>n.channel.includes('Artigo')||n.channel.includes('Monitoramento')||n.channel.includes('Alerta')||(!n.channel.includes('Newsletter')&&!n.channel.includes('LinkedIn')&&!n.channel.includes('Instagram')&&!n.channel.includes('Stories')&&!n.channel.includes('Carrossel')))
+      };
+      const el=document.getElementById('kanban');
+      el.innerHTML='';
+      Object.entries(lanes).forEach(([lane,items])=>{
+        const box=document.createElement('div');
+        box.className='lane';
+        box.innerHTML=`<h4>${escapeHtml(lane)}<span>${items.length}</span></h4>`+items.map(n=>`<div class="idea"><strong>${escapeHtml(n.angle)}</strong><small>${escapeHtml(n.area)}<br>${escapeHtml(n.summary)}</small><span class="pill ${priorityClass(n.priority)}">${escapeHtml(n.priority)}</span></div>`).join('');
+        el.appendChild(box);
+      });
+    }
+
+    function renderValidation(){
+      const tbody=document.getElementById('validationRows');
+      tbody.innerHTML='';
+      news.filter(n=>n.priority!=='Baixa').forEach(n=>{
+        tbody.insertAdjacentHTML('beforeend',`<tr><td><strong>${escapeHtml(n.angle)}</strong><br><small>${escapeHtml(n.title)}</small></td><td>${escapeHtml(n.area)}</td><td>${escapeHtml(n.lawyer)}</td><td>${escapeHtml(n.question)}</td><td><span class="pill ${priorityClass(n.priority)}">${escapeHtml(n.lawyerStatus || statusByPriority(n.priority))}</span></td></tr>`)
+      });
+      if(!tbody.children.length){
+        tbody.innerHTML='<tr><td colspan="5">Nenhuma pauta pendente de validação.</td></tr>';
+      }
+    }
+
+    function renderCalendar(){
+      const days=[
+        ['Segunda','LinkedIn','Radar executivo da semana: impactos em caixa, margem e governança.'],
+        ['Terça','Newsletter','Alerta técnico validado com advogado responsável.'],
+        ['Quarta','Carrossel','Cena prática: onde o risco nasce na rotina da empresa.'],
+        ['Quinta','Artigo SEO','Tema de maior profundidade para busca orgânica.'],
+        ['Sexta','Stories','Resumo rápido: o que acompanhar na próxima semana.']
+      ];
+      const el=document.getElementById('calendar');
+      el.innerHTML='';
+      days.forEach(d=>el.insertAdjacentHTML('beforeend',`<div class="day"><h4>${d[0]}</h4><span class="channel">${d[1]}</span><p style="margin-top:12px">${d[2]}</p><p>Fluxo: pauta → validação técnica → adaptação por canal → publicação.</p></div>`));
+    }
+
+    function renderSources(){
+      const el=document.getElementById('sources');
+      el.innerHTML='';
+      if(!sources.length){
+        el.innerHTML='<p style="color:var(--muted);padding:10px">Nenhuma fonte carregada.</p>';
+        return;
+      }
+      sources.forEach(s=>{
+        const name = s.name || 'Fonte sem nome';
+        const url = s.url || '#';
+        const item = `<a class="source" href="${escapeHtml(url)}" target="_blank" rel="noopener"><i></i>${escapeHtml(name)}</a>`;
+        el.insertAdjacentHTML('beforeend', item);
+      });
+    }
+
+    function openDrawer(id){
+      const n=news.find(x=>String(x.id)===String(id));
+      if(!n) return;
+      document.getElementById('drawerTitle').textContent=n.angle;
+      document.getElementById('drawerBody').innerHTML=`
+        <h4>Fato monitorado</h4><p>${escapeHtml(n.title)}</p>
+        <h4>Fonte e data</h4><p>${escapeHtml(n.source)} • ${escapeHtml(n.date)}</p>
+        <h4>Resumo simples</h4><p>${escapeHtml(n.summary)}</p>
+        <h4>Impacto empresarial</h4><p>${escapeHtml(n.businessImpact)}</p>
+        <h4>Rotina afetada</h4><p>${escapeHtml(n.impact.join(', '))}</p>
+        <h4>Canal indicado</h4><p>${escapeHtml(n.channel)}. Escolha sugerida pela urgência, potencial de engajamento e profundidade necessária.</p>
+        <h4>Pergunta para validar com o advogado</h4><p>${escapeHtml(n.question)}</p>
+        <h4>Risco de publicar rápido demais</h4><p>${escapeHtml(n.fastPublishRisk)}</p>
+        <h4>Link da fonte</h4><p><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">Abrir notícia original</a></p>
+        <h4>Anotação interna</h4><textarea class="field" placeholder="Digite observações da validação técnica..."></textarea>
+        <div class="status-row"><button class="btn yellow" onclick="showToast('Pauta marcada como validada')">Validar pauta</button><button class="btn ghost" onclick="showToast('Pauta enviada para revisão')">Pedir ajuste</button></div>`;
+      document.getElementById('drawer').classList.add('open');
+      document.getElementById('drawer').setAttribute('aria-hidden','false');
+    }
+
+    function switchView(view){
+      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+      document.getElementById(view).classList.add('active');
+      document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+      document.getElementById('pageTitle').textContent=pageCopy[view][0];
+      document.getElementById('pageSubtitle').textContent=pageCopy[view][1];
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function updateAll(){
+      setupFilters();
+      renderDashboard();
+      renderNews();
+      renderKanban();
+      renderValidation();
+      renderCalendar();
+      renderSources();
+    }
+
+    document.addEventListener('click',e=>{
+      const nav=e.target.closest('[data-view]'); if(nav) switchView(nav.dataset.view);
+      const link=e.target.closest('[data-viewlink]'); if(link) switchView(link.dataset.viewlink);
+      const detail=e.target.closest('[data-detail]'); if(detail) openDrawer(detail.dataset.detail);
+      const save=e.target.closest('[data-save]'); if(save) showToast('Pauta salva na fila editorial');
+    });
+
+    ['searchInput','areaFilter','priorityFilter','channelFilter'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderNews));
+    document.getElementById('drawerClose').addEventListener('click',()=>document.getElementById('drawer').classList.remove('open'));
+    document.getElementById('newScanBtn').addEventListener('click',()=>loadData().catch(err=>{console.error(err); showToast('Erro ao atualizar dados. Veja o console.')}));
+    document.getElementById('exportBtn').addEventListener('click',()=>{
+      const briefing = news.slice(0,5).map((n,i)=>`${i+1}. ${n.angle}\nÁrea: ${n.area}\nCanal: ${n.channel}\nValidação: ${n.question}\nFonte: ${n.url}`).join('\n\n');
+      const blob=new Blob([briefing],{type:'text/plain;charset=utf-8'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='briefing-radar-afa.txt';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Briefing exportado');
+    });
+    document.getElementById('copyPrompt').addEventListener('click',async()=>{await navigator.clipboard.writeText(document.getElementById('promptText').textContent);showToast('Prompt copiado');});
+
+    loadData().catch(err=>{
+      console.error(err);
+      document.getElementById('dashboardFeed').innerHTML='<p style="color:var(--danger);padding:10px">Não foi possível conectar ao Supabase. Confira a URL, a publishable key e as políticas de leitura.</p>';
+      showToast('Erro ao conectar ao Supabase');
+      renderCalendar();
+    });
+  </script>
+</body>
+</html>
