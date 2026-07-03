@@ -51,6 +51,35 @@ EXCLUDED_TERMS = [
     "assine", "minha conta", "fale conosco", "trabalhe conosco", "central de ajuda",
     "publicidade", "anuncie", "newsletter", "podcasts", "web stories", "mapa do site",
     "quem somos", "expediente", "rss", "termos de serviço",
+    # Ruídos de portais generalistas que não devem entrar no radar jurídico empresarial
+    "meme", "viral", "futebol", "campeonato", "jogador", "atacante", "técnico do time",
+    "novela", "bbb", "reality", "celebridade", "influencer", "cinema", "filme", "série",
+    "show", "música", "cantor", "atriz", "ator", "fofoca", "horóscopo", "receita de",
+    "haaland", "as branquelas", "trailer", "cartaz", "bilheteria",
+]
+
+# Termos que realmente indicam pauta jurídica, regulatória ou empresarial.
+# A ideia é impedir que palavras amplas como "empresa" ou "negócios" sozinhas puxem entretenimento ou notícias gerais.
+HARD_RELEVANCE_TERMS = [
+    "reforma tributária", "cbs", "ibs", "split payment", "imposto seletivo", "tributário",
+    "tributária", "fiscal", "receita federal", "pgfn", "dívida ativa", "transação tributária",
+    "cnd", "execução fiscal", "carf", "icms", "iss", "pis", "cofins", "irpj", "csll",
+    "instrução normativa", "portaria", "resolução", "decreto", "lei", "medida provisória",
+    "stf", "stj", "tst", "tribunal", "julgamento", "precedente", "repetitivo",
+    "trabalhista", "mte", "jornada", "pejotização", "terceirização", "vínculo de emprego",
+    "sindicato", "nr-1", "anpd", "lgpd", "dados pessoais", "proteção de dados",
+    "incidente de segurança", "compliance", "cvm", "cade", "societário", "m&a",
+    "fusão", "aquisição", "governança", "sócios", "mercado de capitais", "contrato",
+    "contratual", "fornecedor", "inadimplência", "cobrança", "recuperação de crédito",
+    "recuperação judicial", "falência", "legal ops", "legal operations", "jurimetria",
+    "departamento jurídico", "legal analytics",
+]
+
+GENERAL_NEWS_SOURCES = ["o globo", "exame", "infomoney", "valor econômico", "jovem pan", "google news"]
+
+URL_NOISE_PARTS = [
+    "/esporte", "/esportes", "/cultura", "/ela/", "/famos", "/tv/", "/play/",
+    "/entretenimento", "/pop/", "/celebr", "/horoscopo", "/receitas/", "/video/",
 ]
 
 CATEGORY_RULES = {
@@ -315,7 +344,35 @@ def is_recent_iso(iso_value: Optional[str]) -> bool:
 
 def is_noise(title: str, url: str = "", summary: str = "") -> bool:
     content = f"{title} {url} {summary}".lower()
-    return any(term in content for term in EXCLUDED_TERMS)
+    url_lower = (url or "").lower()
+    if any(term in content for term in EXCLUDED_TERMS):
+        return True
+    if any(part in url_lower for part in URL_NOISE_PARTS):
+        return True
+    return False
+
+
+def has_hard_relevance(title: str, summary: str = "") -> bool:
+    content = f"{title} {summary}".lower()
+    return any(term in content for term in HARD_RELEVANCE_TERMS)
+
+
+def is_editorially_relevant(title: str, summary: str = "", source_name: str = "", source_type: str = "") -> bool:
+    """Filtro editorial AFA: notícia só entra se tiver sinal jurídico/regulatório/empresarial real.
+
+    Fontes oficiais têm mais tolerância, mas portais generalistas precisam de termo forte no título/resumo.
+    Isso evita ruídos como entretenimento, esportes, memes ou páginas institucionais.
+    """
+    if is_noise(title, "", summary):
+        return False
+    if has_hard_relevance(title, summary):
+        return True
+    src = (source_name or "").lower()
+    if source_type == "oficial":
+        return True
+    if any(g in src for g in GENERAL_NEWS_SOURCES):
+        return False
+    return False
 
 
 def supabase_request(method: str, path: str, *, params=None, json=None, extra_headers=None):
@@ -523,13 +580,16 @@ def collect_from_google_news() -> List[Dict]:
                 if is_noise(title, link, summary):
                     print(f"Ignorada por ruído: {title[:80]}")
                     continue
-                if not matches_keywords(title, summary, ""):
-                    continue
                 source_name = "Google News"
                 try:
                     source_name = entry.source.title or source_name
                 except Exception:
                     pass
+                if not matches_keywords(title, summary, ""):
+                    continue
+                if not is_editorially_relevant(title, summary, source_name, "portal"):
+                    print(f"Ignorada por baixa relevância editorial: {source_name} | {title[:80]}")
+                    continue
                 area = classify_area(title, summary, None)
                 priority = priority_for(area, title, "portal")
                 collected.append({
@@ -587,6 +647,8 @@ def collect_from_page(source: Dict) -> List[Dict]:
                 continue
             if not matches_keywords(title, "", source.get("keywords") or ""):
                 continue
+            if not is_editorially_relevant(title, "", source.get("name") or "", source.get("type") or ""):
+                continue
             candidates.append((title, url))
             if len(candidates) >= 12:
                 break
@@ -642,6 +704,8 @@ def collect_from_rss(source: Dict) -> List[Dict]:
             if is_noise(title, link, summary):
                 continue
             if not matches_keywords(title, summary, source.get("keywords") or ""):
+                continue
+            if not is_editorially_relevant(title, summary, source.get("name") or "", source.get("type") or ""):
                 continue
             area = classify_area(title, summary, source.get("priority_area"))
             priority = priority_for(area, title, source.get("type") or "")
