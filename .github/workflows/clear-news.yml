@@ -1,0 +1,46 @@
+name: Limpar notícias do Radar
+
+on:
+  schedule:
+    # Executa a cada 5 dias, às 10h40 no horário de Brasília
+    - cron: "40 13 */5 * *"
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "Escolha o modo de limpeza"
+        required: true
+        default: "antigas"
+        type: choice
+        options:
+          - antigas
+          - tudo
+      confirmar:
+        description: "Para apagar tudo, digite APAGAR"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  clear-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Limpar notícias antigas
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLEAN_MODE: ${{ github.event.inputs.modo || 'antigas' }}
+          CLEAN_CONFIRMATION: ${{ github.event.inputs.confirmar || '' }}
+        run: python scripts/clear_news.py
