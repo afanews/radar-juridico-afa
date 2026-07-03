@@ -1,9 +1,11 @@
 import hashlib
+import json
 import os
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import Dict, Iterable, List, Optional
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -13,6 +15,9 @@ from bs4 import BeautifulSoup
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+MAX_AGE_HOURS = int(os.getenv("MAX_AGE_HOURS", "96"))
+MAX_ITEMS_PER_PAGE_SOURCE = int(os.getenv("MAX_ITEMS_PER_PAGE_SOURCE", "4"))
+MAX_ITEMS_PER_GOOGLE_QUERY = int(os.getenv("MAX_ITEMS_PER_GOOGLE_QUERY", "6"))
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("Erro: SUPABASE_URL e SUPABASE_SERVICE_KEY precisam estar cadastrados nos secrets do GitHub.", file=sys.stderr)
@@ -25,7 +30,7 @@ HEADERS = {
 }
 
 HTTP_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; RadarJuridicoAFA/1.0; +https://afanews.github.io/radar-juridico-afa/)"
+    "User-Agent": "Mozilla/5.0 (compatible; RadarJuridicoAFA/1.1; +https://afanews.github.io/radar-juridico-afa/)"
 }
 
 GLOBAL_KEYWORDS = [
@@ -34,10 +39,18 @@ GLOBAL_KEYWORDS = [
     "receita federal", "carf", "stf", "stj", "tst", "tributário", "icms", "iss",
     "pis", "cofins", "irpj", "csll", "lucro presumido", "per/dcomp", "ncm", "cfop",
     "trabalhista", "jornada", "pejotização", "terceirização", "sindicato", "mte",
-    "anpd", "lgpd", "dados pessoais", "privacidade", "incidente de segurança",
+    "anpd", "lgpd", "dados pessoais", "proteção de dados", "incidente de segurança",
     "cvm", "societário", "m&a", "fusão", "aquisição", "governança", "sócios",
     "contrato", "fornecedor", "recuperação de crédito", "inadimplência", "cobrança",
     "empresa", "empresas", "pequenas empresas", "médias empresas", "negócios",
+]
+
+EXCLUDED_TERMS = [
+    "declaração de privacidade", "política de privacidade", "privacy policy", "termos de uso",
+    "termos e condições", "cookies", "preferências de cookies", "login", "entrar", "cadastro",
+    "assine", "minha conta", "fale conosco", "trabalhe conosco", "central de ajuda",
+    "publicidade", "anuncie", "newsletter", "podcasts", "web stories", "mapa do site",
+    "quem somos", "expediente", "rss", "termos de serviço",
 ]
 
 CATEGORY_RULES = {
@@ -45,7 +58,7 @@ CATEGORY_RULES = {
     "Contencioso Tributário": ["pgfn", "dívida ativa", "cnd", "execução fiscal", "transação tributária", "protesto de cda", "carf", "auto de infração"],
     "Tributário Consultivo": ["receita federal", "tributário", "icms", "iss", "pis", "cofins", "irpj", "csll", "per/dcomp", "ncm", "cfop", "obrigação acessória", "lucro presumido"],
     "Trabalhista Empresarial": ["tst", "mte", "trabalhista", "jornada", "pejotização", "terceirização", "vínculo de emprego", "controle de ponto", "sindicato", "nr-1"],
-    "LGPD, Tecnologia e Compliance": ["anpd", "lgpd", "dados pessoais", "privacidade", "incidente de segurança", "vazamento de dados", "compliance", "inteligência artificial"],
+    "LGPD, Tecnologia e Compliance": ["anpd", "lgpd", "dados pessoais", "proteção de dados", "incidente de segurança", "vazamento de dados", "compliance", "inteligência artificial"],
     "Societário, M&A e Governança": ["cvm", "societário", "m&a", "fusão", "aquisição", "governança", "sócios", "companhias abertas", "investidor", "mercado de capitais"],
     "Cível Empresarial e Contratos": ["contrato", "fornecedor", "stj", "cível", "consumidor", "recuperação de crédito", "inadimplência", "responsabilidade civil", "marketplace"],
     "Legal Ops": ["legal ops", "legal operations", "jurimetria", "legal analytics", "departamento jurídico", "gestão jurídica", "dashboard jurídico"],
@@ -84,6 +97,133 @@ AGENDA_TEMPLATE = {
     "Legal Ops": "O jurídico que transforma carteira, dados e indicadores em decisão de negócio",
 }
 
+
+AREA_EDITORIAL = {
+    "Reforma Tributária": {
+        "rotina": "ERP, cadastro fiscal, precificação, contratos, crédito tributário, financeiro e TI",
+        "impacto": "preço, margem, crédito, capital de giro e previsibilidade da transição",
+        "cena": "Uma empresa trata a mudança como tema apenas fiscal e descobre depois que o impacto estava no cadastro, no contrato e no caixa.",
+        "decisao": "simular cenários, revisar contratos e testar sistemas antes que o impacto chegue ao resultado",
+    },
+    "Contencioso Tributário": {
+        "rotina": "CND, dívida ativa, garantias, execução fiscal, jurídico, financeiro e negociação com credores",
+        "impacto": "caixa, regularidade fiscal, financiamento, licitação, M&A e capacidade de pagamento",
+        "cena": "A empresa olha apenas para o desconto ou para a tese, mas o problema aparece quando uma CND, uma garantia ou um bloqueio trava a operação.",
+        "decisao": "priorizar passivos críticos, medir efeito no caixa e validar a estratégia antes de aderir ou litigar",
+    },
+    "Tributário Consultivo": {
+        "rotina": "cadastro fiscal, nota fiscal, obrigação acessória, apuração, ERP, compras, fiscal e financeiro",
+        "impacto": "risco fiscal, crédito tributário, margem, preço e retrabalho operacional",
+        "cena": "O erro não nasce na autuação. Nasce quando cadastro, documento fiscal, compra e apuração deixam de conversar.",
+        "decisao": "revisar dados críticos, priorizar itens de maior impacto e integrar fiscal, TI, compras e financeiro",
+    },
+    "Trabalhista Empresarial": {
+        "rotina": "RH, DP, liderança, jornada, contratos, políticas internas, terceiros e documentação de prova",
+        "impacto": "passivo trabalhista, cultura, custo operacional, previsibilidade e reputação interna",
+        "cena": "A rotina parece resolvida no dia a dia, até que a empresa precisa provar jornada, autonomia, treinamento ou conduta de liderança.",
+        "decisao": "revisar práticas, alinhar líderes e documentar a rotina antes do conflito aparecer",
+    },
+    "LGPD, Tecnologia e Compliance": {
+        "rotina": "atendimento, marketing, WhatsApp comercial, fornecedores, TI, segurança da informação e governança de dados",
+        "impacto": "reputação, sanções, continuidade operacional, confiança do cliente e resposta a incidentes",
+        "cena": "O dado coletado em uma venda, campanha ou atendimento pode virar risco quando não há controle sobre finalidade, acesso e fornecedor.",
+        "decisao": "mapear fluxos de dados, revisar fornecedores e definir resposta rápida para incidentes",
+    },
+    "Societário, M&A e Governança": {
+        "rotina": "acordo de sócios, governança, documentação societária, captação, due diligence e conselho",
+        "impacto": "valuation, entrada de investidor, conflito societário, sucessão e crescimento",
+        "cena": "O comprador não olha só faturamento. Ele desconta risco quando encontra documentos frágeis, governança informal ou passivos escondidos.",
+        "decisao": "organizar documentos, clarear regras societárias e tratar governança como ativo de crescimento",
+    },
+    "Cível Empresarial e Contratos": {
+        "rotina": "contratos, compras, fornecedores, cobrança, marketplaces, comercial, operação e atendimento ao cliente",
+        "impacto": "margem, inadimplência, continuidade operacional, responsabilidade na cadeia e preservação de ativos",
+        "cena": "O contrato parece formalidade até a cadeia falhar, o fornecedor romper, o cliente não pagar ou a margem desaparecer.",
+        "decisao": "revisar cláusulas críticas, garantias, prazos, responsabilidades e plano de saída da relação",
+    },
+    "Legal Ops": {
+        "rotina": "carteira contenciosa, contratos, depósitos judiciais, dashboards, KPIs, orçamento jurídico e board",
+        "impacto": "eficiência jurídica, recuperação de valores, previsibilidade, custo e tomada de decisão",
+        "cena": "O jurídico deixa dinheiro e informação parados quando não transforma processos, contratos e depósitos em dados para decisão.",
+        "decisao": "estruturar indicadores, priorizar carteira e levar visão executiva para o board",
+    },
+}
+
+
+def safe_topic(title: str) -> str:
+    text = re.sub(r"\s+[-|–]\s+[^-|–]{2,90}$", "", text_norm(title))
+    text = re.sub(r"^(Exclusivo|Opinião|Análise|Entenda|Veja|Saiba)[:\s-]+", "", text, flags=re.I)
+    if len(text) > 110:
+        text = text[:107].rstrip() + "..."
+    return text or "a atualização monitorada"
+
+
+def editorial_profile(area: str) -> Dict[str, str]:
+    return AREA_EDITORIAL.get(area) or {
+        "rotina": "contratos, operação, financeiro, jurídico e governança",
+        "impacto": "risco, caixa, margem, reputação e tomada de decisão",
+        "cena": "A notícia só importa para a empresa quando altera uma rotina, um controle, um contrato ou uma decisão.",
+        "decisao": "validar impacto prático, priorizar riscos e transformar o tema em ação de negócio",
+    }
+
+
+def agenda_for(area: str, title: str) -> str:
+    topic = safe_topic(title)
+    p = editorial_profile(area)
+    # Títulos com cara de pauta AFA: menos "notícia", mais rotina empresarial.
+    if area == "Reforma Tributária":
+        return f"{topic}: o impacto que pode chegar ao ERP, ao contrato e ao caixa"
+    if area == "Contencioso Tributário":
+        return f"{topic}: quando o risco fiscal deixa de ser processo e vira decisão de caixa"
+    if area == "Tributário Consultivo":
+        return f"{topic}: o risco fiscal que pode nascer na rotina operacional"
+    if area == "Trabalhista Empresarial":
+        return f"{topic}: o detalhe de RH que pode virar passivo sem prova"
+    if area == "LGPD, Tecnologia e Compliance":
+        return f"{topic}: o risco de dados que aparece no atendimento, no marketing ou no fornecedor"
+    if area == "Societário, M&A e Governança":
+        return f"{topic}: por que governança também pesa no valor da empresa"
+    if area == "Cível Empresarial e Contratos":
+        return f"{topic}: o contrato ou a cobrança que pode afetar margem e continuidade"
+    if area == "Legal Ops":
+        return f"{topic}: como transformar risco jurídico em dado para decisão"
+    return f"{topic}: o que muda na rotina empresarial e merece validação jurídica"
+
+
+def business_impact_for(area: str, title: str) -> str:
+    p = editorial_profile(area)
+    topic = safe_topic(title)
+    return (
+        f"A atualização sobre {topic} deve ser lida pelo impacto prático em {p['rotina']}. "
+        f"O ponto empresarial é medir efeito em {p['impacto']}, antes de tratar o tema apenas como notícia jurídica."
+    )
+
+
+def angle_for(area: str, title: str) -> str:
+    p = editorial_profile(area)
+    topic = safe_topic(title)
+    return (
+        f"Cena AFA: {p['cena']} A pauta deve partir de {topic} para mostrar onde o risco nasce, "
+        f"como ele se espalha pela operação e qual decisão a empresa precisa tomar: {p['decisao']}."
+    )
+
+
+def validation_question_for(area: str, title: str) -> str:
+    topic = safe_topic(title)
+    return (
+        f"Sobre {topic}: o fato está vigente, a fonte é suficiente, há aplicabilidade para empresas brasileiras "
+        f"e existe algum ponto técnico que limite uma publicação imediata pelo AFA?"
+    )
+
+
+def source_summary_for(source_name: str, title: str, area: str) -> str:
+    p = editorial_profile(area)
+    topic = safe_topic(title)
+    return (
+        f"{source_name} publicou atualização sobre {topic}. Para o AFA, o valor editorial está em traduzir "
+        f"o fato para a rotina da empresa: {p['rotina']}. Validar a fonte original antes de publicar."
+    )
+
 GOOGLE_NEWS_QUERIES = [
     "reforma tributária CBS IBS split payment empresas",
     "PGFN transação tributária CND dívida ativa empresas",
@@ -109,6 +249,73 @@ def text_norm(value: str) -> str:
 
 def md5(value: str) -> str:
     return hashlib.md5(value.encode("utf-8")).hexdigest()
+
+
+def parse_date_value(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+
+    # ISO comum: 2026-07-02T10:20:00Z
+    try:
+        normalized = raw.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        pass
+
+    # RFC comum em RSS: Wed, 02 Jul 2026 13:20:00 GMT
+    try:
+        dt = parsedate_to_datetime(raw)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        pass
+
+    # Formato brasileiro simples: 02/07/2026 ou 02/07/2026 10:20
+    match = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?", raw)
+    if match:
+        day, month, year, hour, minute = match.groups()
+        return datetime(int(year), int(month), int(day), int(hour or 0), int(minute or 0), tzinfo=timezone.utc)
+
+    # Fallback: tenta usar o parser interno do feedparser
+    try:
+        parsed = feedparser._parse_date(raw)  # type: ignore[attr-defined]
+        if parsed:
+            return datetime(*parsed[:6], tzinfo=timezone.utc)
+    except Exception:
+        pass
+
+    return None
+
+
+def parse_feed_date(entry) -> Optional[str]:
+    parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
+    if parsed:
+        return datetime(*parsed[:6], tzinfo=timezone.utc).isoformat()
+    for key in ["published", "updated", "created"]:
+        dt = parse_date_value(entry.get(key))
+        if dt:
+            return dt.isoformat()
+    return None
+
+
+def is_recent_iso(iso_value: Optional[str]) -> bool:
+    dt = parse_date_value(iso_value)
+    if not dt:
+        return False
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=MAX_AGE_HOURS)
+    return dt >= cutoff
+
+
+def is_noise(title: str, url: str = "", summary: str = "") -> bool:
+    content = f"{title} {url} {summary}".lower()
+    return any(term in content for term in EXCLUDED_TERMS)
 
 
 def supabase_request(method: str, path: str, *, params=None, json=None, extra_headers=None):
@@ -176,12 +383,12 @@ def insert_news(item: Dict) -> Optional[str]:
 def insert_analysis(news_item_id: str, area: str, title: str):
     payload = {
         "news_item_id": news_item_id,
-        "business_impact": BUSINESS_IMPACT.get(area, "Impacto empresarial a validar."),
-        "affected_routine": AFFECTED_ROUTINE.get(area, "rotina empresarial a validar"),
-        "suggested_agenda": AGENDA_TEMPLATE.get(area, "Pauta empresarial a validar"),
-        "suggested_angle": "Transformar o fato novo em leitura de negócio: onde o risco nasce, como se espalha e qual decisão a empresa precisa tomar.",
-        "validation_question": "O fato está vigente, a interpretação está correta e há segurança técnica para publicar agora?",
-        "fast_publish_risk": "Risco de publicar sem confirmar vigência, alcance da norma/decisão ou aplicabilidade ao público empresarial do AFA.",
+        "business_impact": business_impact_for(area, title),
+        "affected_routine": AFFECTED_ROUTINE.get(area, editorial_profile(area)["rotina"]),
+        "suggested_agenda": agenda_for(area, title),
+        "suggested_angle": angle_for(area, title),
+        "validation_question": validation_question_for(area, title),
+        "fast_publish_risk": "Risco de publicar rápido demais: tratar a atualização como regra definitiva sem confirmar vigência, alcance, exceções e aderência ao público empresarial do AFA.",
         "lawyer_status": "Pendente",
     }
     supabase_request("POST", "editorial_analysis", json=payload, extra_headers={"Prefer": "return=minimal"})
@@ -233,15 +440,68 @@ def channel_for(area: str, priority: str, title: str) -> str:
 
 
 def clean_google_title(title: str) -> str:
-    # Google News costuma retornar "Título - Fonte". Mantemos o título principal.
     return re.sub(r"\s+-\s+[^-]{2,80}$", "", title).strip()
 
 
-def parse_feed_date(entry) -> Optional[str]:
-    parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
-    if parsed:
-        return datetime(*parsed[:6], tzinfo=timezone.utc).isoformat()
+def extract_jsonld_dates(soup: BeautifulSoup) -> Optional[datetime]:
+    for tag in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        try:
+            data = json.loads(tag.string or "")
+        except Exception:
+            continue
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop()
+            if isinstance(item, dict):
+                for key in ["datePublished", "dateCreated", "dateModified", "uploadDate"]:
+                    dt = parse_date_value(item.get(key))
+                    if dt:
+                        return dt
+                for value in item.values():
+                    if isinstance(value, (dict, list)):
+                        stack.extend(value if isinstance(value, list) else [value])
     return None
+
+
+def extract_published_date_from_html(html: str) -> Optional[datetime]:
+    soup = BeautifulSoup(html, "html.parser")
+    selectors = [
+        {"property": "article:published_time"},
+        {"property": "og:published_time"},
+        {"name": "date"},
+        {"name": "pubdate"},
+        {"name": "publishdate"},
+        {"name": "timestamp"},
+        {"name": "DC.date.issued"},
+        {"itemprop": "datePublished"},
+        {"itemprop": "dateCreated"},
+        {"itemprop": "dateModified"},
+    ]
+    for attrs in selectors:
+        tag = soup.find("meta", attrs=attrs)
+        if tag:
+            dt = parse_date_value(tag.get("content"))
+            if dt:
+                return dt
+    for time_tag in soup.find_all("time"):
+        dt = parse_date_value(time_tag.get("datetime") or time_tag.get_text(" "))
+        if dt:
+            return dt
+    dt = extract_jsonld_dates(soup)
+    if dt:
+        return dt
+    # Último recurso: procura uma data BR no texto próximo ao topo.
+    top_text = text_norm(soup.get_text(" "))[:2500]
+    return parse_date_value(top_text)
+
+
+def get_article_date(url: str) -> Optional[datetime]:
+    try:
+        response = requests.get(url, headers=HTTP_HEADERS, timeout=15)
+        response.raise_for_status()
+        return extract_published_date_from_html(response.text)
+    except Exception:
+        return None
 
 
 def collect_from_google_news() -> List[Dict]:
@@ -250,17 +510,26 @@ def collect_from_google_news() -> List[Dict]:
         feed_url = f"https://news.google.com/rss/search?q={quote_plus(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
         try:
             feed = feedparser.parse(feed_url)
-            for entry in feed.entries[:8]:
+            for entry in feed.entries[:MAX_ITEMS_PER_GOOGLE_QUERY]:
                 title = text_norm(clean_google_title(entry.get("title", "")))
                 link = entry.get("link", "")
+                published_at = parse_feed_date(entry)
+                summary = text_norm(BeautifulSoup(entry.get("summary", ""), "html.parser").get_text(" "))
                 if not title or not link:
+                    continue
+                if not published_at or not is_recent_iso(published_at):
+                    print(f"Ignorada por data antiga/ausente: {title[:80]}")
+                    continue
+                if is_noise(title, link, summary):
+                    print(f"Ignorada por ruído: {title[:80]}")
+                    continue
+                if not matches_keywords(title, summary, ""):
                     continue
                 source_name = "Google News"
                 try:
                     source_name = entry.source.title or source_name
                 except Exception:
                     pass
-                summary = text_norm(BeautifulSoup(entry.get("summary", ""), "html.parser").get_text(" "))
                 area = classify_area(title, summary, None)
                 priority = priority_for(area, title, "portal")
                 collected.append({
@@ -268,8 +537,8 @@ def collect_from_google_news() -> List[Dict]:
                     "title": title,
                     "url": link,
                     "source_name": source_name,
-                    "published_at": parse_feed_date(entry) or now_iso(),
-                    "summary": summary[:700] if summary else "Notícia encontrada via Google News RSS. Validar fonte original antes de publicar.",
+                    "published_at": published_at,
+                    "summary": summary[:700] if summary else source_summary_for(source_name, title, area),
                     "detected_area": area,
                     "priority": priority,
                     "suggested_channel": channel_for(area, priority, title),
@@ -284,6 +553,8 @@ def collect_from_google_news() -> List[Dict]:
 
 def is_probably_article(url: str, title: str, source_url: str) -> bool:
     if not url or not title or len(title) < 25:
+        return False
+    if is_noise(title, url):
         return False
     parsed = urlparse(url)
     if parsed.scheme not in ["http", "https"]:
@@ -304,6 +575,7 @@ def collect_from_page(source: Dict) -> List[Dict]:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         seen = set()
+        candidates = []
         for link_tag in soup.find_all("a", href=True):
             title = text_norm(link_tag.get_text(" "))
             url = urljoin(source_url, link_tag.get("href"))
@@ -315,6 +587,19 @@ def collect_from_page(source: Dict) -> List[Dict]:
                 continue
             if not matches_keywords(title, "", source.get("keywords") or ""):
                 continue
+            candidates.append((title, url))
+            if len(candidates) >= 12:
+                break
+
+        for title, url in candidates:
+            published_dt = get_article_date(url)
+            if not published_dt:
+                print(f"Ignorada sem data publicada: {source.get('name')} | {title[:80]}")
+                continue
+            published_at = published_dt.isoformat()
+            if not is_recent_iso(published_at):
+                print(f"Ignorada por ser antiga: {source.get('name')} | {published_at} | {title[:80]}")
+                continue
             area = classify_area(title, "", source.get("priority_area"))
             priority = priority_for(area, title, source.get("type") or "")
             items.append({
@@ -322,16 +607,17 @@ def collect_from_page(source: Dict) -> List[Dict]:
                 "title": title[:500],
                 "url": url,
                 "source_name": source.get("name") or "Fonte monitorada",
-                "published_at": now_iso(),
-                "summary": "Notícia encontrada na página pública da fonte. Validar o conteúdo original antes de publicar.",
+                "published_at": published_at,
+                "summary": source_summary_for(source.get('name') or 'Fonte monitorada', title, area),
                 "detected_area": area,
                 "priority": priority,
                 "suggested_channel": channel_for(area, priority, title),
                 "status": "Nova",
                 "content_hash": md5(url),
             })
-            if len(items) >= 10:
+            if len(items) >= MAX_ITEMS_PER_PAGE_SOURCE:
                 break
+            time.sleep(0.3)
     except Exception as exc:
         print(f"Aviso: falha ao buscar página {source.get('name')}: {exc}")
     return items
@@ -348,7 +634,12 @@ def collect_from_rss(source: Dict) -> List[Dict]:
             title = text_norm(entry.get("title", ""))
             link = entry.get("link", "")
             summary = text_norm(BeautifulSoup(entry.get("summary", ""), "html.parser").get_text(" "))
+            published_at = parse_feed_date(entry)
             if not title or not link:
+                continue
+            if not published_at or not is_recent_iso(published_at):
+                continue
+            if is_noise(title, link, summary):
                 continue
             if not matches_keywords(title, summary, source.get("keywords") or ""):
                 continue
@@ -359,8 +650,8 @@ def collect_from_rss(source: Dict) -> List[Dict]:
                 "title": title[:500],
                 "url": link,
                 "source_name": source.get("name") or "RSS",
-                "published_at": parse_feed_date(entry) or now_iso(),
-                "summary": summary[:700] if summary else "Notícia encontrada via RSS. Validar o conteúdo original antes de publicar.",
+                "published_at": published_at,
+                "summary": summary[:700] if summary else source_summary_for(source.get('name') or 'RSS', title, area),
                 "detected_area": area,
                 "priority": priority,
                 "suggested_channel": channel_for(area, priority, title),
@@ -393,6 +684,7 @@ def main():
         sources = get_sources()
         all_items = []
 
+        print(f"Filtro de atualidade: últimas {MAX_AGE_HOURS} horas")
         print(f"Fontes ativas: {len(sources)}")
         for source in sources:
             all_items.extend(collect_from_rss(source))
@@ -402,10 +694,12 @@ def main():
         all_items.extend(collect_from_google_news())
         all_items = dedupe(all_items)
         total_found = len(all_items)
-        print(f"Notícias candidatas encontradas: {total_found}")
+        print(f"Notícias candidatas recentes encontradas: {total_found}")
 
         for item in all_items:
             try:
+                if not is_recent_iso(item.get("published_at")):
+                    continue
                 news_id = insert_news(item)
                 if news_id:
                     insert_analysis(news_id, item.get("detected_area") or "Jurídico Empresarial", item.get("title") or "")
@@ -415,7 +709,7 @@ def main():
                 print(f"Aviso: falha ao inserir item {item.get('url')}: {exc}")
 
         finish_fetch_run(run_id, "Concluído", total_found, total_inserted)
-        print(f"Concluído. Encontradas: {total_found}. Inseridas: {total_inserted}.")
+        print(f"Concluído. Recentes encontradas: {total_found}. Inseridas: {total_inserted}.")
     except Exception as exc:
         finish_fetch_run(run_id, "Erro", total_found, total_inserted, str(exc))
         raise
