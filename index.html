@@ -115,6 +115,21 @@
     .lane h4{margin:2px 2px 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#575852;display:flex;justify-content:space-between;align-items:center}
     .idea{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;margin-bottom:10px;box-shadow:0 8px 18px rgba(0,0,0,.04)}
     .idea strong{font-size:13px;line-height:1.3;display:block}.idea small{display:block;color:var(--muted);font-size:11px;margin-top:7px;line-height:1.35}.idea .pill{display:inline-block;margin-top:10px}
+
+    .rank-item,.idea{cursor:pointer;transition:.14s ease}
+    .rank-item:hover,.idea:hover{border-color:#b9baaf;box-shadow:0 12px 30px rgba(0,0,0,.08);transform:translateY(-1px)}
+    .idea-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+    .review-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;border:1px solid var(--line);background:#fafaf7;color:#595a55}
+    .review-chip.approved{background:rgba(20,120,95,.10);color:var(--ok);border-color:rgba(20,120,95,.18)}
+    .review-chip.rejected{background:rgba(201,75,71,.10);color:var(--danger);border-color:rgba(201,75,71,.18)}
+    .review-chip.adjust{background:rgba(246,196,0,.18);color:#705900;border-color:rgba(246,196,0,.24)}
+    .content-grid{display:grid;gap:12px;margin-top:10px}
+    .content-block{border:1px solid var(--line);background:#fbfbf8;border-radius:18px;padding:14px}
+    .content-block h5{margin:0 0 8px;font-size:13px;color:#242523;letter-spacing:-.01em}
+    .content-block p,.content-block li{font-size:13px;line-height:1.52;color:#464744;margin:0 0 7px}
+    .content-block ul{margin:8px 0 0;padding-left:18px}
+    .copy-row{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+    .copy-row .channel{margin:0}
     .sources{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
     .source{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;display:flex;gap:9px;align-items:center;font-weight:700;font-size:13px;color:#444541}
     .source i{width:10px;height:10px;border-radius:99px;background:var(--afa);display:block}
@@ -165,7 +180,7 @@
       <div class="topbar">
         <div class="headline">
           <h2 id="pageTitle">Dashboard do radar</h2>
-          <p id="pageSubtitle">Transforme notícias jurídicas recentes em pautas empresariais com prioridade, canal recomendado e validação técnica.</p>
+          <p id="pageSubtitle">Transforme notícias jurídicas recentes em pautas empresariais, com sugestão por canal, aprovação interna e validação técnica.</p>
         </div>
         <div class="actions">
           <button class="btn ghost" id="exportBtn">Exportar briefing</button>
@@ -175,14 +190,14 @@
 
       <section class="section active" id="dashboard">
         <div class="grid stats">
-          <article class="stat"><small>Notícias triadas</small><strong id="statNews">18</strong><span>últimas 48 horas</span></article>
+          <article class="stat"><small>Notícias triadas</small><strong id="statNews">18</strong><span>últimos 4 dias</span></article>
           <article class="stat"><small>Prioridade alta</small><strong id="statHigh">6</strong><span>exigem validação rápida</span></article>
           <article class="stat"><small>Pautas sugeridas</small><strong id="statIdeas">11</strong><span>com canal recomendado</span></article>
           <article class="stat"><small>Validação pendente</small><strong id="statPending">7</strong><span>advogado responsável</span></article>
         </div>
         <div class="layout">
           <div class="card">
-            <div class="card-head"><div><h3>Radar recente</h3><p>Dados carregados do Supabase. Nesta etapa, ainda usamos notícias de teste até ligar o robô de busca.</p></div><button class="mini-btn" data-viewlink="noticias">Ver tudo</button></div>
+            <div class="card-head"><div><h3>Radar recente</h3><p>Dados carregados do Supabase. O radar prioriza notícias recentes, com limite máximo de 4 dias.</p></div><button class="mini-btn" data-viewlink="noticias">Ver tudo</button></div>
             <div class="card-body"><div class="feed" id="dashboardFeed"></div></div>
           </div>
           <div class="card">
@@ -209,7 +224,7 @@
 
       <section class="section" id="pautas">
         <div class="card">
-          <div class="card-head"><div><h3>Pautas sugeridas</h3><p>Da notícia recente para o ângulo empresarial: impacto, canal e pergunta para validação técnica.</p></div></div>
+          <div class="card-head"><div><h3>Pautas sugeridas</h3><p>Clique em cada pauta para abrir sugestões prontas por canal, ideia de conteúdo, validação técnica e aprovação interna.</p></div></div>
           <div class="card-body">
             <div class="kanban" id="kanban"></div>
           </div>
@@ -276,14 +291,15 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
   <script>
     const SUPABASE_URL = "https://phllqbyawgwuzhdntnil.supabase.co";
     const SUPABASE_PUBLIC_KEY = "sb_publishable_WmD9FLe7r4RijTgkGx7IkA_JZwX3ijL";
+    const MAX_AGE_DAYS = 4;
 
     let news = [];
     let sources = [];
 
     const pageCopy = {
-      dashboard:['Dashboard do radar','Dados conectados ao Supabase. Nesta etapa, as notícias de teste confirmam que o banco e o painel estão conversando.'],
+      dashboard:['Dashboard do radar','Notícias recentes conectadas ao Supabase, com limite máximo de 4 dias e prioridade editorial para o AFA.'],
       noticias:['Radar de notícias','Lista carregada do Supabase, com filtros por área, prioridade e canal sugerido.'],
-      pautas:['Pautas sugeridas','Organização editorial para transformar fatos jurídicos em conteúdo empresarial no estilo AFA.'],
+      pautas:['Pautas sugeridas','Clique em cada pauta para ver sugestão por canal, ideia de conteúdo, aprovação interna e validação técnica.'],
       validacao:['Validação jurídica','Fila interna para revisão técnica dos advogados antes da publicação.'],
       calendario:['Calendário editorial','Distribuição das pautas por canal, profundidade e oportunidade de publicação.'],
       fontes:['Fontes monitoradas','Fontes oficiais, regulatórias, judiciais e jornalísticas cadastradas no Supabase.'],
@@ -297,6 +313,8 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
     }
 
+    function normalizeText(value){ return String(value || '').replace(/\s+/g,' ').trim(); }
+
     function showToast(text){
       const t=document.getElementById('toast');
       t.textContent=text;
@@ -305,11 +323,7 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
     }
 
     function supabaseHeaders(){
-      return {
-        apikey: SUPABASE_PUBLIC_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`,
-        'Content-Type': 'application/json'
-      };
+      return { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${SUPABASE_PUBLIC_KEY}`, 'Content-Type': 'application/json' };
     }
 
     async function supabaseGet(path){
@@ -331,16 +345,20 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       if(diffHours < 24) return `Há ${diffHours}h`;
       const diffDays = Math.floor(diffHours / 24);
       if(diffDays === 1) return 'Ontem';
+      if(diffDays <= MAX_AGE_DAYS) return `Há ${diffDays} dias`;
       return date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }
+
+    function isWithinMaxAge(value){
+      if(!value) return false;
+      const date = new Date(value);
+      if(Number.isNaN(date.getTime())) return false;
+      return date.getTime() >= Date.now() - (MAX_AGE_DAYS * 24 * 60 * 60 * 1000);
     }
 
     function splitTags(value){
       if(Array.isArray(value)) return value.filter(Boolean);
-      return String(value || '')
-        .split(/[,;|]/)
-        .map(x => x.trim())
-        .filter(Boolean)
-        .slice(0,6);
+      return String(value || '').split(/[,;|]/).map(x => x.trim()).filter(Boolean).slice(0,6);
     }
 
     function getAnalysis(item){
@@ -349,41 +367,285 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       return analysis || {};
     }
 
+    function getReviewMap(){
+      try { return JSON.parse(localStorage.getItem('radarAfaReviewStatus') || '{}'); }
+      catch { return {}; }
+    }
+
+    function getReviewStatus(id){ return getReviewMap()[id] || ''; }
+
+    function setReviewStatus(id,status){
+      const map=getReviewMap();
+      map[id]=status;
+      localStorage.setItem('radarAfaReviewStatus', JSON.stringify(map));
+      const item = news.find(n=>String(n.id)===String(id));
+      if(item) item.reviewStatus = status;
+      updateAll();
+      showToast(status === 'Aprovada' ? 'Pauta aprovada internamente' : status === 'Reprovada' ? 'Pauta reprovada' : 'Pauta enviada para ajuste');
+    }
+
+    function reviewClass(status){
+      if(status==='Aprovada') return 'approved';
+      if(status==='Reprovada') return 'rejected';
+      if(status==='Pedir ajuste') return 'adjust';
+      return '';
+    }
+
+    function reviewLabel(n){ return n.reviewStatus || n.lawyerStatus || statusByPriority(n.priority); }
+
+
+    function isGenericText(value){
+      const v = normalizeText(value || '').toLowerCase();
+      if(!v) return true;
+      return [
+        'pauta empresarial a validar',
+        'impacto empresarial a validar',
+        'rotina empresarial a validar',
+        'resumo ainda não cadastrado',
+        'notícia encontrada na página pública da fonte',
+        'validar o conteúdo original antes de publicar',
+        'o tema deve ser tratado como pauta de gestão de risco empresarial'
+      ].some(term => v.includes(term));
+    }
+
+    function topicFromTitle(title){
+      let t = normalizeText(title || 'a atualização monitorada');
+      t = t.replace(/\s+[-|–]\s+[^-|–]{2,90}$/,'');
+      t = t.replace(/^(Exclusivo|Opinião|Análise|Entenda|Veja|Saiba)[:\s-]+/i,'');
+      if(t.length > 120) t = t.slice(0,117).trim() + '...';
+      return t || 'a atualização monitorada';
+    }
+
+    function afaProfile(area){
+      const profiles = {
+        'Reforma Tributária': {
+          rotina:'ERP, cadastro fiscal, precificação, contratos, crédito tributário, financeiro e TI',
+          impacto:'preço, margem, crédito, capital de giro e previsibilidade da transição',
+          cena:'Uma empresa mantém o cadastro fiscal e os contratos como estão, mas a mudança chega na nota, no ERP e no caixa antes de aparecer no relatório da diretoria.',
+          acao:'simular cenários, revisar cláusulas de repasse, testar sistemas e priorizar itens de maior impacto financeiro',
+          abertura:'A Reforma Tributária não é só uma mudança de alíquota. Ela muda a forma como a empresa testa dados, sistemas, contratos e preços.'
+        },
+        'Contencioso Tributário': {
+          rotina:'CND, dívida ativa, garantias, execução fiscal, jurídico, financeiro e negociação com credores',
+          impacto:'caixa, regularidade fiscal, financiamento, licitação, M&A e capacidade de pagamento',
+          cena:'A empresa olha para o processo como assunto jurídico, até uma CND travar uma venda, um financiamento ou uma operação societária.',
+          acao:'separar passivos críticos, medir efeito no caixa, revisar garantias e decidir quando transacionar, discutir ou provisionar',
+          abertura:'Passivo fiscal não fica parado no jurídico. Ele aparece quando a empresa precisa de crédito, CND, caixa ou previsibilidade.'
+        },
+        'Tributário Consultivo': {
+          rotina:'cadastro fiscal, nota fiscal, obrigação acessória, apuração, ERP, compras, fiscal e financeiro',
+          impacto:'risco fiscal, crédito tributário, margem, preço e retrabalho operacional',
+          cena:'O erro não nasce na autuação. Nasce quando cadastro, documento fiscal, compra e apuração deixam de conversar.',
+          acao:'revisar dados críticos, priorizar operações de maior valor e integrar fiscal, TI, compras e financeiro',
+          abertura:'Um tema tributário deixa de ser técnico quando muda preço, crédito, margem ou a rotina do ERP.'
+        },
+        'Trabalhista Empresarial': {
+          rotina:'RH, DP, liderança, jornada, contratos, políticas internas, terceiros e documentação de prova',
+          impacto:'passivo trabalhista, cultura, custo operacional, previsibilidade e reputação interna',
+          cena:'A rotina parece resolvida no dia a dia, até a empresa precisar provar jornada, autonomia, treinamento ou conduta de liderança.',
+          acao:'revisar práticas, treinar líderes, documentar decisões e alinhar RH, DP e jurídico',
+          abertura:'Risco trabalhista não nasce só no processo. Muitas vezes nasce na rotina que a empresa não documenta.'
+        },
+        'LGPD, Tecnologia e Compliance': {
+          rotina:'atendimento, marketing, WhatsApp comercial, fornecedores, TI, segurança da informação e governança de dados',
+          impacto:'reputação, sanções, continuidade operacional, confiança do cliente e resposta a incidentes',
+          cena:'O dado coletado em uma venda, campanha ou atendimento pode virar risco quando não há controle sobre finalidade, acesso e fornecedor.',
+          acao:'mapear fluxos de dados, revisar fornecedores, limitar acessos e preparar resposta a incidentes',
+          abertura:'LGPD aparece menos no texto da lei e mais no atendimento, no marketing, no fornecedor e no sistema que guarda dados.'
+        },
+        'Societário, M&A e Governança': {
+          rotina:'acordo de sócios, governança, documentação societária, captação, due diligence e conselho',
+          impacto:'valuation, entrada de investidor, conflito societário, sucessão e crescimento',
+          cena:'O comprador não olha só faturamento. Ele desconta risco quando encontra documentos frágeis, governança informal ou passivos escondidos.',
+          acao:'organizar documentos, revisar regras societárias, mapear riscos e tratar governança como ativo de crescimento',
+          abertura:'Governança não é burocracia. É parte do preço que a empresa consegue sustentar diante de sócios, investidores e compradores.'
+        },
+        'Cível Empresarial e Contratos': {
+          rotina:'contratos, compras, fornecedores, cobrança, marketplaces, comercial, operação e atendimento ao cliente',
+          impacto:'margem, inadimplência, continuidade operacional, responsabilidade na cadeia e preservação de ativos',
+          cena:'O contrato parece formalidade até a cadeia falhar, o fornecedor romper, o cliente não pagar ou a margem desaparecer.',
+          acao:'revisar cláusulas críticas, garantias, prazos, responsabilidades, reajuste e plano de saída',
+          abertura:'Contrato bom não serve só para discutir depois. Ele protege margem, operação e continuidade antes do conflito aparecer.'
+        },
+        'Legal Ops': {
+          rotina:'carteira contenciosa, contratos, depósitos judiciais, dashboards, KPIs, orçamento jurídico e board',
+          impacto:'eficiência jurídica, recuperação de valores, previsibilidade, custo e tomada de decisão',
+          cena:'O jurídico deixa dinheiro e informação parados quando não transforma processos, contratos e depósitos em dados para decisão.',
+          acao:'estruturar indicadores, revisar carteira, recuperar valores parados e levar visão executiva para o board',
+          abertura:'Legal Ops não é só tecnologia. É usar dados jurídicos para melhorar decisão, custo e previsibilidade.'
+        }
+      };
+      return profiles[area] || {
+        rotina:'contratos, operação, financeiro, jurídico e governança',
+        impacto:'risco, caixa, margem, reputação e tomada de decisão',
+        cena:'A notícia só importa para a empresa quando altera uma rotina, um controle, um contrato ou uma decisão.',
+        acao:'validar impacto prático, priorizar riscos e transformar o tema em ação de negócio',
+        abertura:'Atualização jurídica só ganha relevância empresarial quando muda uma decisão prática.'
+      };
+    }
+
+    function buildAfaAgenda(item){
+      const topic = topicFromTitle(item.title);
+      const area = item.detected_area || item.area || '';
+      if(area.includes('Reforma')) return `${topic}: o impacto que pode chegar ao ERP, ao contrato e ao caixa`;
+      if(area.includes('Contencioso Tributário')) return `${topic}: quando o risco fiscal deixa de ser processo e vira decisão de caixa`;
+      if(area.includes('Tributário')) return `${topic}: o risco fiscal que pode nascer na rotina operacional`;
+      if(area.includes('Trabalhista')) return `${topic}: o detalhe de RH que pode virar passivo sem prova`;
+      if(area.includes('LGPD') || area.includes('Compliance')) return `${topic}: o risco de dados que aparece no atendimento, no marketing ou no fornecedor`;
+      if(area.includes('Societário') || area.includes('Governança')) return `${topic}: por que governança também pesa no valor da empresa`;
+      if(area.includes('Cível') || area.includes('Contratos')) return `${topic}: o contrato ou a cobrança que pode afetar margem e continuidade`;
+      if(area.includes('Legal Ops')) return `${topic}: como transformar risco jurídico em dado para decisão`;
+      return `${topic}: o que muda na rotina empresarial e merece validação jurídica`;
+    }
+
+    function buildAfaImpact(item){
+      const area = item.detected_area || item.area || '';
+      const p = afaProfile(area);
+      return `O ponto empresarial é avaliar se a atualização altera ${p.rotina}. O impacto possível está em ${p.impacto}. Antes de publicar, o advogado deve validar vigência, alcance e exceções.`;
+    }
+
+    function buildAfaSummary(item){
+      const area = item.detected_area || item.area || '';
+      const p = afaProfile(area);
+      return `${item.source_name || item.source || 'Fonte monitorada'} trouxe uma atualização sobre ${topicFromTitle(item.title)}. A leitura AFA deve partir da operação: ${p.cena}`;
+    }
+
+    function buildAfaQuestion(item){
+      return `O fato sobre ${topicFromTitle(item.title)} está vigente, tem fonte suficiente, aplica-se a empresas brasileiras e permite publicação sem ressalvas adicionais?`;
+    }
+
     function mapNewsItem(item){
       const analysis = getAnalysis(item);
       const area = item.detected_area || 'A classificar';
+      const profile = afaProfile(area);
       const impact = splitTags(analysis.affected_routine);
+      const rawDate = item.published_at || item.collected_at;
+      const tempItem = { ...item, area, detected_area: area };
+      const summaryRaw = item.summary || '';
+      const agendaRaw = analysis.suggested_agenda || analysis.suggested_angle || '';
+      const businessRaw = analysis.business_impact || '';
+      const questionRaw = analysis.validation_question || '';
       return {
         id: item.id,
         title: item.title || 'Sem título',
         url: item.url || '#',
         source: item.source_name || 'Fonte não informada',
-        date: formatDate(item.published_at || item.collected_at),
-        rawDate: item.published_at || item.collected_at,
+        date: formatDate(rawDate),
+        rawDate,
         area,
         priority: item.priority || 'Média',
         channel: item.suggested_channel || 'Monitoramento',
-        impact: impact.length ? impact : splitTags(analysis.business_impact || 'Impacto a validar'),
-        summary: item.summary || 'Resumo ainda não cadastrado.',
-        angle: analysis.suggested_agenda || analysis.suggested_angle || item.title || 'Pauta a validar',
-        question: analysis.validation_question || 'Qual ponto técnico precisa ser validado antes da publicação?',
+        impact: impact.length ? impact : splitTags(profile.rotina),
+        summary: isGenericText(summaryRaw) ? buildAfaSummary(tempItem) : summaryRaw,
+        angle: isGenericText(agendaRaw) ? buildAfaAgenda(tempItem) : agendaRaw,
+        question: isGenericText(questionRaw) ? buildAfaQuestion(tempItem) : questionRaw,
         lawyer: area,
-        businessImpact: analysis.business_impact || 'Impacto empresarial a validar.',
-        fastPublishRisk: analysis.fast_publish_risk || 'Risco de publicar sem validação técnica do advogado responsável.',
-        lawyerStatus: analysis.lawyer_status || item.status || 'Pendente'
+        businessImpact: isGenericText(businessRaw) ? buildAfaImpact(tempItem) : businessRaw,
+        fastPublishRisk: analysis.fast_publish_risk || 'Risco de publicar rápido demais: tratar a atualização como regra definitiva sem confirmar vigência, alcance, exceções e aderência ao público empresarial do AFA.',
+        lawyerStatus: analysis.lawyer_status || item.status || 'Pendente',
+        reviewStatus: getReviewStatus(item.id)
       };
     }
 
     async function loadData(){
       showToast('Carregando dados do Supabase...');
       const [newsRows, sourceRows] = await Promise.all([
-        supabaseGet('news_items?select=id,title,url,source_name,published_at,collected_at,summary,detected_area,priority,suggested_channel,status,editorial_analysis(business_impact,affected_routine,suggested_agenda,suggested_angle,validation_question,fast_publish_risk,lawyer_status,lawyer_notes)&order=published_at.desc.nullslast&order=collected_at.desc&limit=100'),
+        supabaseGet('news_items?select=id,title,url,source_name,published_at,collected_at,summary,detected_area,priority,suggested_channel,status,editorial_analysis(business_impact,affected_routine,suggested_agenda,suggested_angle,validation_question,fast_publish_risk,lawyer_status,lawyer_notes)&order=published_at.desc.nullslast&order=collected_at.desc&limit=150'),
         supabaseGet('sources?select=name,url,type,priority_area,active&active=eq.true&order=name.asc')
       ]);
-      news = newsRows.map(mapNewsItem);
+      news = newsRows.map(mapNewsItem).filter(n => isWithinMaxAge(n.rawDate));
       sources = sourceRows.map(s => ({ name:s.name, url:s.url, type:s.type, area:s.priority_area }));
       updateAll();
-      showToast(`Dados atualizados: ${news.length} notícia(s) e ${sources.length} fonte(s)`);
+      showToast(`Dados atualizados: ${news.length} notícia(s) dos últimos ${MAX_AGE_DAYS} dias`);
+    }
+
+    function buildContentSuggestions(n){
+      const area = n.area || '';
+      const p = afaProfile(area);
+      const rotina = n.impact.length ? n.impact.join(', ') : p.rotina;
+      const impacto = normalizeText(n.businessImpact || buildAfaImpact(n));
+      const baseTitle = normalizeText(n.angle || buildAfaAgenda(n));
+      const pergunta = normalizeText(n.question || buildAfaQuestion(n));
+      const topic = topicFromTitle(n.title);
+      const resumo = normalizeText(n.summary || buildAfaSummary(n));
+      const cena = p.cena;
+      const acao = p.acao;
+      return {
+        ideia:`Ideia de conteúdo AFA: usar a atualização sobre ${topic} para mostrar uma cena real de empresa. ${cena} O conteúdo deve conectar o fato a ${rotina}, deixando claro o impacto em ${p.impacto}. O fechamento deve orientar validação técnica e priorização de riscos, sem transformar a pauta em parecer jurídico público.`,
+        linkedin:`${baseTitle}
+
+${p.abertura}
+
+A atualização monitorada envolve: ${topic}.
+
+Na prática, o risco aparece quando a empresa trata o tema como informação isolada e não revisa a rotina onde ele se materializa: ${rotina}.
+
+${cena}
+
+Para pequenas e médias empresas, o ponto central não é apenas saber que houve uma mudança. É entender se ela altera ${p.impacto}.
+
+Antes de publicar ou orientar qualquer ação, a validação técnica deve responder:
+${pergunta}
+
+Leitura AFA: o jurídico precisa traduzir a notícia em decisão de negócio — com impacto em operação, caixa, margem, governança ou reputação.`,
+        newsletter:`Assunto sugerido: ${baseTitle}
+
+Resumo executivo
+${resumo}
+
+Por que importa para empresas
+${impacto}
+
+Onde o risco aparece
+${rotina}.
+
+Leitura AFA
+${cena}
+
+O que fazer agora
+1. Validar tecnicamente o alcance da atualização.
+2. Identificar quais rotinas internas podem ser afetadas.
+3. Priorizar áreas com impacto em ${p.impacto}.
+4. Transformar a pauta em conteúdo somente após revisão do advogado responsável.
+
+Pergunta para validação técnica
+${pergunta}`,
+        carrossel:[
+          `Slide 1 — ${baseTitle}`,
+          `Slide 2 — O fato: ${topic}`,
+          `Slide 3 — A cena real: ${cena}`,
+          `Slide 4 — Onde o risco nasce: ${rotina}`,
+          `Slide 5 — Impacto empresarial: ${p.impacto}`,
+          `Slide 6 — O que fazer agora: ${acao}`
+        ],
+        stories:[
+          `Story 1: Alerta empresarial — ${topic}`,
+          `Story 2: O risco pode aparecer em ${rotina}.`,
+          `Story 3: Antes de publicar ou agir, valide: ${pergunta}`
+        ],
+        artigo:`Título SEO sugerido
+${baseTitle}: impactos práticos para empresas
+
+Introdução sugerida
+A atualização sobre ${topic} não deve ser lida apenas como novidade jurídica. Para empresas, o ponto relevante é entender se o tema altera rotinas internas, contratos, dados, caixa, margem ou governança.
+
+Estrutura do artigo
+1. O que aconteceu, em linguagem simples
+2. Em qual rotina empresarial o tema aparece: ${rotina}
+3. Onde o risco nasce na operação
+4. Como o risco se espalha para ${p.impacto}
+5. Checklist de avaliação para gestores
+6. Pontos que precisam de validação técnica
+7. Recomendações práticas após revisão jurídica
+
+Fechamento sugerido
+Empresas que tratam atualizações jurídicas como decisão de negócio ganham previsibilidade, reduzem retrabalho e evitam que o risco apareça tarde demais.`
+      };
+    }
+
+    function renderReviewChip(n){
+      const status = reviewLabel(n);
+      return `<span class="review-chip ${reviewClass(status)}">${escapeHtml(status)}</span>`;
     }
 
     function renderNewsItem(item){
@@ -399,10 +661,12 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
           <span class="pill ${priorityClass(item.priority)}">${escapeHtml(item.priority)}</span>
         </div>
         <p>${escapeHtml(item.summary)}</p>
-        <div class="impact">${item.impact.map(x=>`<span class="tag">${escapeHtml(x)}</span>`).join('')}</div>
+        <div class="impact">${item.impact.map(x=>`<span class="tag">${escapeHtml(x)}</span>`).join('')}${renderReviewChip(item)}</div>
         <div class="news-actions">
-          <button class="mini-btn primary" data-detail="${escapeHtml(item.id)}">Abrir análise</button>
-          <button class="mini-btn" data-save="${escapeHtml(item.id)}">Salvar pauta</button>
+          <button class="mini-btn primary" data-detail="${escapeHtml(item.id)}">Abrir sugestão</button>
+          <button class="mini-btn" data-status-id="${escapeHtml(item.id)}" data-status="Aprovada">Aprovar</button>
+          <button class="mini-btn" data-status-id="${escapeHtml(item.id)}" data-status="Pedir ajuste">Ajustar</button>
+          <button class="mini-btn" data-status-id="${escapeHtml(item.id)}" data-status="Reprovada">Reprovar</button>
           <a class="mini-btn" href="${safeUrl}" target="_blank" rel="noopener">Abrir fonte</a>
           <button class="mini-btn">${escapeHtml(item.channel)}</button>
         </div>`;
@@ -413,11 +677,11 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       document.getElementById('statNews').textContent=news.length;
       document.getElementById('statHigh').textContent=news.filter(n=>n.priority==='Alta').length;
       document.getElementById('statIdeas').textContent=new Set(news.map(n=>n.angle)).size;
-      document.getElementById('statPending').textContent=news.filter(n=>n.priority!=='Baixa').length;
+      document.getElementById('statPending').textContent=news.filter(n=>!['Aprovada','Reprovada'].includes(n.reviewStatus)).length;
       const feed=document.getElementById('dashboardFeed');
       feed.innerHTML='';
       if(!news.length){
-        feed.innerHTML='<p style="color:var(--muted);padding:10px">Nenhuma notícia encontrada no banco. Verifique se as notícias de teste foram inseridas.</p>';
+        feed.innerHTML='<p style="color:var(--muted);padding:10px">Nenhuma notícia recente encontrada no banco. Rode o workflow ou limpe os filtros.</p>';
       } else {
         news.slice(0,5).forEach(n=>feed.appendChild(renderNewsItem(n)));
       }
@@ -430,7 +694,8 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       ranked.forEach((n,i)=>{
         const el=document.createElement('div');
         el.className='rank-item';
-        el.innerHTML=`<div class="rank-num">${i+1}</div><div><h4>${escapeHtml(n.angle)}</h4><p>${escapeHtml(n.area)} • ${escapeHtml(n.channel)}</p></div>`;
+        el.setAttribute('data-detail', n.id);
+        el.innerHTML=`<div class="rank-num">${i+1}</div><div><h4>${escapeHtml(n.angle)}</h4><p>${escapeHtml(n.area)} • ${escapeHtml(n.channel)}</p>${renderReviewChip(n)}</div>`;
         ranking.appendChild(el);
       });
     }
@@ -478,7 +743,13 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       Object.entries(lanes).forEach(([lane,items])=>{
         const box=document.createElement('div');
         box.className='lane';
-        box.innerHTML=`<h4>${escapeHtml(lane)}<span>${items.length}</span></h4>`+items.map(n=>`<div class="idea"><strong>${escapeHtml(n.angle)}</strong><small>${escapeHtml(n.area)}<br>${escapeHtml(n.summary)}</small><span class="pill ${priorityClass(n.priority)}">${escapeHtml(n.priority)}</span></div>`).join('');
+        box.innerHTML=`<h4>${escapeHtml(lane)}<span>${items.length}</span></h4>`+items.map(n=>`
+          <div class="idea" data-detail="${escapeHtml(n.id)}">
+            <strong>${escapeHtml(n.angle)}</strong>
+            <small>${escapeHtml(n.area)}<br>${escapeHtml(n.summary)}</small>
+            <div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap"><span class="pill ${priorityClass(n.priority)}">${escapeHtml(n.priority)}</span>${renderReviewChip(n)}</div>
+            <div class="idea-actions"><button class="mini-btn primary" data-detail="${escapeHtml(n.id)}">Ver textos</button><button class="mini-btn" data-status-id="${escapeHtml(n.id)}" data-status="Aprovada">Aprovar</button><button class="mini-btn" data-status-id="${escapeHtml(n.id)}" data-status="Reprovada">Reprovar</button></div>
+          </div>`).join('');
         el.appendChild(box);
       });
     }
@@ -487,11 +758,9 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       const tbody=document.getElementById('validationRows');
       tbody.innerHTML='';
       news.filter(n=>n.priority!=='Baixa').forEach(n=>{
-        tbody.insertAdjacentHTML('beforeend',`<tr><td><strong>${escapeHtml(n.angle)}</strong><br><small>${escapeHtml(n.title)}</small></td><td>${escapeHtml(n.area)}</td><td>${escapeHtml(n.lawyer)}</td><td>${escapeHtml(n.question)}</td><td><span class="pill ${priorityClass(n.priority)}">${escapeHtml(n.lawyerStatus || statusByPriority(n.priority))}</span></td></tr>`)
+        tbody.insertAdjacentHTML('beforeend',`<tr><td><strong>${escapeHtml(n.angle)}</strong><br><small>${escapeHtml(n.title)}</small></td><td>${escapeHtml(n.area)}</td><td>${escapeHtml(n.lawyer)}</td><td>${escapeHtml(n.question)}</td><td>${renderReviewChip(n)}<div class="status-row"><button class="mini-btn" data-detail="${escapeHtml(n.id)}">Abrir</button><button class="mini-btn" data-status-id="${escapeHtml(n.id)}" data-status="Aprovada">Aprovar</button><button class="mini-btn" data-status-id="${escapeHtml(n.id)}" data-status="Pedir ajuste">Ajustar</button><button class="mini-btn" data-status-id="${escapeHtml(n.id)}" data-status="Reprovada">Reprovar</button></div></td></tr>`)
       });
-      if(!tbody.children.length){
-        tbody.innerHTML='<tr><td colspan="5">Nenhuma pauta pendente de validação.</td></tr>';
-      }
+      if(!tbody.children.length){ tbody.innerHTML='<tr><td colspan="5">Nenhuma pauta pendente de validação.</td></tr>'; }
     }
 
     function renderCalendar(){
@@ -510,34 +779,48 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
     function renderSources(){
       const el=document.getElementById('sources');
       el.innerHTML='';
-      if(!sources.length){
-        el.innerHTML='<p style="color:var(--muted);padding:10px">Nenhuma fonte carregada.</p>';
-        return;
-      }
+      if(!sources.length){ el.innerHTML='<p style="color:var(--muted);padding:10px">Nenhuma fonte carregada.</p>'; return; }
       sources.forEach(s=>{
-        const name = s.name || 'Fonte sem nome';
-        const url = s.url || '#';
-        const item = `<a class="source" href="${escapeHtml(url)}" target="_blank" rel="noopener"><i></i>${escapeHtml(name)}</a>`;
+        const item = `<a class="source" href="${escapeHtml(s.url || '#')}" target="_blank" rel="noopener"><i></i>${escapeHtml(s.name || 'Fonte sem nome')}</a>`;
         el.insertAdjacentHTML('beforeend', item);
       });
+    }
+
+    function suggestionBlock(label, text, key, asList=false){
+      if(asList && Array.isArray(text)){
+        return `<div class="content-block"><div class="copy-row"><span class="channel">${escapeHtml(label)}</span><button class="mini-btn" data-copy-channel="${escapeHtml(key)}">Copiar</button></div><ul>${text.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul></div>`;
+      }
+      return `<div class="content-block"><div class="copy-row"><span class="channel">${escapeHtml(label)}</span><button class="mini-btn" data-copy-channel="${escapeHtml(key)}">Copiar</button></div><p style="white-space:pre-wrap">${escapeHtml(text)}</p></div>`;
     }
 
     function openDrawer(id){
       const n=news.find(x=>String(x.id)===String(id));
       if(!n) return;
+      window.currentDrawerId = n.id;
+      const c=buildContentSuggestions(n);
       document.getElementById('drawerTitle').textContent=n.angle;
       document.getElementById('drawerBody').innerHTML=`
         <h4>Fato monitorado</h4><p>${escapeHtml(n.title)}</p>
         <h4>Fonte e data</h4><p>${escapeHtml(n.source)} • ${escapeHtml(n.date)}</p>
         <h4>Resumo simples</h4><p>${escapeHtml(n.summary)}</p>
+        <h4>Ideia de conteúdo aplicável</h4><p>${escapeHtml(c.ideia)}</p>
         <h4>Impacto empresarial</h4><p>${escapeHtml(n.businessImpact)}</p>
         <h4>Rotina afetada</h4><p>${escapeHtml(n.impact.join(', '))}</p>
-        <h4>Canal indicado</h4><p>${escapeHtml(n.channel)}. Escolha sugerida pela urgência, potencial de engajamento e profundidade necessária.</p>
+        <h4>Conteúdos sugeridos por canal</h4>
+        <div class="content-grid">
+          ${suggestionBlock('LinkedIn', c.linkedin, 'linkedin')}
+          ${suggestionBlock('Newsletter', c.newsletter, 'newsletter')}
+          ${suggestionBlock('Instagram carrossel', c.carrossel, 'carrossel', true)}
+          ${suggestionBlock('Stories', c.stories, 'stories', true)}
+          ${suggestionBlock('Artigo SEO', c.artigo, 'artigo')}
+        </div>
         <h4>Pergunta para validar com o advogado</h4><p>${escapeHtml(n.question)}</p>
         <h4>Risco de publicar rápido demais</h4><p>${escapeHtml(n.fastPublishRisk)}</p>
         <h4>Link da fonte</h4><p><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">Abrir notícia original</a></p>
+        <h4>Status interno</h4><p>${renderReviewChip(n)}</p>
+        <p style="margin-top:8px;color:var(--muted);font-size:12px">Nesta versão gratuita, a aprovação fica salva neste navegador. Para aprovação persistente entre usuários, o próximo passo é login no Supabase ou uma Edge Function segura.</p>
         <h4>Anotação interna</h4><textarea class="field" placeholder="Digite observações da validação técnica..."></textarea>
-        <div class="status-row"><button class="btn yellow" onclick="showToast('Pauta marcada como validada')">Validar pauta</button><button class="btn ghost" onclick="showToast('Pauta enviada para revisão')">Pedir ajuste</button></div>`;
+        <div class="status-row"><button class="btn yellow" data-status-id="${escapeHtml(n.id)}" data-status="Aprovada">Aprovar pauta</button><button class="btn ghost" data-status-id="${escapeHtml(n.id)}" data-status="Pedir ajuste">Pedir ajuste</button><button class="btn ghost" data-status-id="${escapeHtml(n.id)}" data-status="Reprovada">Reprovar</button></div>`;
       document.getElementById('drawer').classList.add('open');
       document.getElementById('drawer').setAttribute('aria-hidden','false');
     }
@@ -551,17 +834,21 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
       window.scrollTo({top:0,behavior:'smooth'});
     }
 
-    function updateAll(){
-      setupFilters();
-      renderDashboard();
-      renderNews();
-      renderKanban();
-      renderValidation();
-      renderCalendar();
-      renderSources();
+    function updateAll(){ setupFilters(); renderDashboard(); renderNews(); renderKanban(); renderValidation(); renderCalendar(); renderSources(); }
+
+    function getCurrentContent(key){
+      const n = news.find(x=>String(x.id)===String(window.currentDrawerId));
+      if(!n) return '';
+      const c = buildContentSuggestions(n);
+      const value = c[key];
+      return Array.isArray(value) ? value.join('\n') : value;
     }
 
-    document.addEventListener('click',e=>{
+    document.addEventListener('click',async e=>{
+      const statusBtn=e.target.closest('[data-status-id]');
+      if(statusBtn){ e.stopPropagation(); setReviewStatus(statusBtn.dataset.statusId, statusBtn.dataset.status); return; }
+      const copyBtn=e.target.closest('[data-copy-channel]');
+      if(copyBtn){ const text=getCurrentContent(copyBtn.dataset.copyChannel); await navigator.clipboard.writeText(text); showToast('Sugestão copiada'); return; }
       const nav=e.target.closest('[data-view]'); if(nav) switchView(nav.dataset.view);
       const link=e.target.closest('[data-viewlink]'); if(link) switchView(link.dataset.viewlink);
       const detail=e.target.closest('[data-detail]'); if(detail) openDrawer(detail.dataset.detail);
@@ -572,7 +859,7 @@ No final, selecione as 5 melhores pautas do dia para newsletter, LinkedIn, Insta
     document.getElementById('drawerClose').addEventListener('click',()=>document.getElementById('drawer').classList.remove('open'));
     document.getElementById('newScanBtn').addEventListener('click',()=>loadData().catch(err=>{console.error(err); showToast('Erro ao atualizar dados. Veja o console.')}));
     document.getElementById('exportBtn').addEventListener('click',()=>{
-      const briefing = news.slice(0,5).map((n,i)=>`${i+1}. ${n.angle}\nÁrea: ${n.area}\nCanal: ${n.channel}\nValidação: ${n.question}\nFonte: ${n.url}`).join('\n\n');
+      const briefing = news.slice(0,5).map((n,i)=>{ const c=buildContentSuggestions(n); return `${i+1}. ${n.angle}\nÁrea: ${n.area}\nCanal: ${n.channel}\nIdeia: ${c.ideia}\nValidação: ${n.question}\nFonte: ${n.url}`; }).join('\n\n');
       const blob=new Blob([briefing],{type:'text/plain;charset=utf-8'});
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
